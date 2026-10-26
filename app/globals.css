@@ -221,8 +221,12 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
 .monitor-toolbar label { flex: 1; max-width: 520px; margin: 0; }
 .monitor-toolbar input { margin: 0; padding-left: 35px; }
 .monitor-list-options { display: flex; align-items: center; gap: 13px; }
-.monitor-toolbar .list-limit-control { display: flex; flex: 0 0 auto; max-width: none; align-items: center; gap: 7px; color: #718198; font-size: 8px; font-weight: 700; white-space: nowrap; }
-.list-limit-control select { width: 82px; min-height: 34px; margin: 0; padding: 6px 9px; background: #f9fbfe; }
+.monitor-toolbar .list-limit-control { display: flex; flex: 0 0 auto; max-width: none; align-items: center; gap: 8px; color: #718198; font-size: 8px; font-weight: 700; white-space: nowrap; }
+.list-limit-buttons { display: flex; align-items: center; gap: 2px; border: 1px solid #dce5f1; border-radius: 10px; background: #f1f5fb; padding: 3px; box-shadow: inset 0 1px 2px #173b7508; }
+.list-limit-buttons button { min-width: 37px; height: 29px; border: 0; border-radius: 7px; background: transparent; color: #52647d; padding: 0 8px; font-size: 9px; font-weight: 750; transition: background .15s ease, color .15s ease, box-shadow .15s ease; }
+.list-limit-buttons button:hover { color: #174fc8; background: #fff; }
+.list-limit-buttons button.active { color: #fff; background: linear-gradient(90deg, #2364ff, #1455ec); box-shadow: 0 3px 8px #1f5eff30; }
+.list-limit-buttons button:focus-visible { outline: 2px solid #6b96ff; outline-offset: 1px; }
 .monitor-results { display: flex; align-items: center; gap: 12px; color: #718198; font-size: 9px; white-space: nowrap; }
 .monitor-results span:first-child { color: #087854; background: #e7f8f0; border-radius: 20px; padding: 6px 9px; font-weight: 700; }
 .visitor-table-wrap { max-height: 520px; overflow: auto; scrollbar-gutter: stable; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 14px #173b7509; }
@@ -322,6 +326,8 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
   .monitor-toolbar { align-items: stretch; flex-direction: column; }
   .monitor-toolbar label { max-width: none; }
   .monitor-list-options { align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+  .list-limit-control { width: 100%; justify-content: space-between; }
+  .list-limit-buttons { overflow-x: auto; }
   .monitor-results { justify-content: space-between; white-space: normal; }
   .visitor-table-wrap { max-height: 460px; }
   .activity-chart-heading { align-items: flex-start; flex-direction: column; }

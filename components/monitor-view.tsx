@@ -149,15 +149,27 @@ export function MonitorView() {
           </div>
         </label>
         <div className="monitor-list-options">
-          <label className="list-limit-control">
+          <div className="list-limit-control" role="group" aria-label="Quantidade de dispositivos exibidos">
             <span>Mostrar</span>
-            <select value={displayLimit} onChange={(event) => setDisplayLimit(event.target.value)} aria-label="Quantidade de dispositivos exibidos">
-              <option value="10">10</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-              <option value="all">Tudo</option>
-            </select>
-          </label>
+            <div className="list-limit-buttons">
+              {[
+                ["10", "10"],
+                ["50", "50"],
+                ["100", "100"],
+                ["all", "Tudo"],
+              ].map(([value, label]) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={displayLimit === value ? "active" : ""}
+                  aria-pressed={displayLimit === value}
+                  onClick={() => setDisplayLimit(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="monitor-results">
             <span>{identifiedMachines} máquinas identificadas</span>
             <span>Exibindo {displayedVisitors.length} de {filtered.length}</span>
