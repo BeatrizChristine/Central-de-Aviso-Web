@@ -198,7 +198,8 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
 .monitor-toolbar { display: flex; align-items: center; gap: 15px; justify-content: space-between; background: #fff; border: 1px solid var(--line); border-radius: 11px; padding: 12px 14px; margin-bottom: 13px; }
 .monitor-toolbar label { flex: 1; max-width: 520px; margin: 0; }
 .monitor-toolbar input { margin: 0; padding-left: 35px; }
-.monitor-toolbar > span { color: #718198; font-size: 9px; }
+.monitor-results { display: flex; align-items: center; gap: 12px; color: #718198; font-size: 9px; white-space: nowrap; }
+.monitor-results span:first-child { color: #087854; background: #e7f8f0; border-radius: 20px; padding: 6px 9px; font-weight: 700; }
 .visitor-table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 14px #173b7509; }
 .visitor-table { width: 100%; border-collapse: collapse; min-width: 780px; }
 .visitor-table th { color: #7b8aa0; background: #f7f9fc; font-size: 8px; letter-spacing: .08em; text-align: left; text-transform: uppercase; padding: 11px 15px; border-bottom: 1px solid #e7ecf3; }
@@ -290,6 +291,7 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
   .monitor-stats { grid-template-columns: 1fr; }
   .monitor-toolbar { align-items: stretch; flex-direction: column; }
   .monitor-toolbar label { max-width: none; }
+  .monitor-results { justify-content: space-between; white-space: normal; }
   .security-row { grid-template-columns: auto 1fr; }
   .security-row .state-badge { grid-column: 2; width: max-content; }
 }

@@ -20,6 +20,14 @@ npm.cmd run dev
 
 Acesse o endereço exibido no terminal, normalmente `http://localhost:5173`.
 
+O comando `npm.cmd run dev` também inicia, em `127.0.0.1:5190`, um resolvedor local de nomes de máquinas. Ele recebe somente IPs privados devolvidos pela API, consulta o nome pelo Windows e mantém os resultados em cache. Por isso, a tela **Acessando agora** mostra o hostname e o IP quando o notebook está conectado à rede interna.
+
+Se quiser iniciar apenas a interface, sem resolução de nomes, use:
+
+```powershell
+npm.cmd run dev:web
+```
+
 ## Compilar
 
 ```powershell
