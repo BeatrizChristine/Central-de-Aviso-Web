@@ -134,7 +134,7 @@ export function DailyMessageView() {
   const resultEnd = Math.min(firstResult + visibleMessages.length, filteredMessages.length);
 
   return (
-    <div className="content-container management-page">
+    <div className="content-container management-page daily-page">
       <div className="management-heading">
         <div>
           <span className="eyebrow">COMUNICAÇÃO</span>
@@ -178,17 +178,16 @@ export function DailyMessageView() {
           </div>
         </form>
 
-        <section className="daily-list-card">
+        <section className="daily-messages-section" aria-labelledby="daily-list-title">
           <div className="daily-list-heading">
             <div>
-              <strong>Mensagens cadastradas</strong>
+              <strong id="daily-list-title">Mensagens cadastradas</strong>
               <small>{messages.length} {messages.length === 1 ? "mensagem" : "mensagens"}</small>
             </div>
           </div>
 
-          <div className="daily-list-toolbar">
+          <div className="monitor-toolbar daily-list-toolbar">
             <label className="daily-search search-control">
-              <span>BUSCAR MENSAGEM</span>
               <div>
                 <Search size={16} />
                 <input
@@ -198,20 +197,26 @@ export function DailyMessageView() {
                 />
               </div>
             </label>
-            <div className="daily-limit-control" role="group" aria-label="Quantidade de mensagens por página">
-              <span>Mostrar</span>
-              <div className="list-limit-buttons">
-                {[10, 25, 50].map((size) => (
-                  <button
-                    type="button"
-                    key={size}
-                    className={pageSize === size ? "active" : ""}
-                    aria-pressed={pageSize === size}
-                    onClick={() => changePageSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))}
+            <div className="monitor-list-options">
+              <div className="list-limit-control" role="group" aria-label="Quantidade de mensagens por página">
+                <span>Mostrar</span>
+                <div className="list-limit-buttons">
+                  {[10, 25, 50].map((size) => (
+                    <button
+                      type="button"
+                      key={size}
+                      className={pageSize === size ? "active" : ""}
+                      aria-pressed={pageSize === size}
+                      onClick={() => changePageSize(size)}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="monitor-results">
+                <span>{filteredMessages.length} encontradas</span>
+                <span>Exibindo {visibleMessages.length} de {filteredMessages.length}</span>
               </div>
             </div>
           </div>
@@ -225,18 +230,20 @@ export function DailyMessageView() {
           ) : filteredMessages.length === 0 ? (
             <div className="empty-state compact"><Search size={26} /><strong>Nenhuma mensagem encontrada</strong><p>Tente buscar por outro texto.</p></div>
           ) : (
-            <>
-              <div className="daily-list">
-                {visibleMessages.map(({ message, position }) => (
-                  <article key={`${message}-${position}`}>
-                    <span className="daily-index">{String(position).padStart(2, "0")}</span>
-                    <p>{message}</p>
-                    <div>
-                      <button type="button" aria-label={`Editar mensagem ${position}`} title="Editar" onClick={() => edit(message)} disabled={saving}><Edit3 size={15} /></button>
-                      <button type="button" aria-label={`Excluir mensagem ${position}`} title="Excluir" onClick={() => void remove(message)} disabled={saving}><Trash2 size={15} /></button>
-                    </div>
-                  </article>
-                ))}
+            <div className="daily-list-card">
+              <div className="daily-list-scroll">
+                <div className="daily-list">
+                  {visibleMessages.map(({ message, position }) => (
+                    <article key={`${message}-${position}`}>
+                      <span className="daily-index">{String(position).padStart(2, "0")}</span>
+                      <p>{message}</p>
+                      <div>
+                        <button type="button" aria-label={`Editar mensagem ${position}`} title="Editar" onClick={() => edit(message)} disabled={saving}><Edit3 size={15} /></button>
+                        <button type="button" aria-label={`Excluir mensagem ${position}`} title="Excluir" onClick={() => void remove(message)} disabled={saving}><Trash2 size={15} /></button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
               </div>
               <div className="daily-pagination">
                 <span>Exibindo {firstResult + 1}–{resultEnd} de {filteredMessages.length}</span>
@@ -246,7 +253,7 @@ export function DailyMessageView() {
                   <button type="button" aria-label="Próxima página" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}><ChevronRight size={16} /></button>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </section>
       </div>
