@@ -51,6 +51,7 @@ export function MonitorView() {
   const [presence, setPresence] = useState<Presence>(emptyPresence);
   const [samples, setSamples] = useState<ActivitySample[]>(readStoredSamples);
   const [query, setQuery] = useState("");
+  const [displayLimit, setDisplayLimit] = useState("10");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -108,6 +109,9 @@ export function MonitorView() {
   const identifiedMachines = presence.visitors.filter(
     (visitor) => visitor.machine !== "Não informado",
   ).length;
+  const displayedVisitors = displayLimit === "all"
+    ? filtered
+    : filtered.slice(0, Number(displayLimit));
 
   return (
     <div className="content-container management-page">
@@ -144,9 +148,20 @@ export function MonitorView() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por máquina, IP ou navegador" />
           </div>
         </label>
-        <div className="monitor-results">
-          <span>{identifiedMachines} máquinas identificadas</span>
-          <span>{filtered.length} {filtered.length === 1 ? "dispositivo exibido" : "dispositivos exibidos"}</span>
+        <div className="monitor-list-options">
+          <label className="list-limit-control">
+            <span>Mostrar</span>
+            <select value={displayLimit} onChange={(event) => setDisplayLimit(event.target.value)} aria-label="Quantidade de dispositivos exibidos">
+              <option value="10">10</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="all">Tudo</option>
+            </select>
+          </label>
+          <div className="monitor-results">
+            <span>{identifiedMachines} máquinas identificadas</span>
+            <span>Exibindo {displayedVisitors.length} de {filtered.length}</span>
+          </div>
         </div>
       </div>
 
@@ -170,7 +185,7 @@ export function MonitorView() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((visitor, index) => (
+              {displayedVisitors.map((visitor, index) => (
                 <tr key={`${visitor.ip}-${visitor.machine}-${index}`}>
                   <td>
                     <div className="visitor-device">
