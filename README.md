@@ -8,6 +8,8 @@ Versão web da Central de Avisos, construída com TypeScript, React e Next.js. A
 2. Informe em `INTRANET_BASE_URL` o endereço do servidor da Intranet.
 3. Se necessário, informe `INTRANET_AVISOS_TOKEN`.
 
+O endereço padrão conhecido é `http://intranet.idam.am.gov.br:3000` e só fica acessível quando o computador está conectado à rede interna. Para desenvolvimento com um servidor executado no próprio computador, substitua-o por `http://localhost:3000`.
+
 ## Executar
 
 No PowerShell, dentro da pasta `web`:
