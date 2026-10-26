@@ -33,6 +33,8 @@ O token da Intranet é utilizado apenas pelas rotas de servidor em `app/api`. El
 - Novo aviso: formulário, pré-visualização e publicação pela API.
 - Popups: listagem, pesquisa, ativação, desativação e exclusão.
 - Mensagem do dia: listagem, criação, edição e exclusão.
-- Histórico, monitor de acessos e configurações: em migração.
+- Histórico: consulta, pesquisa, filtros, ordenação e indicadores.
+- Monitor de acessos: métricas e visitantes online com atualização automática.
+- Configurações: diagnóstico do servidor, segurança e endpoints integrados.
 
 As funcionalidades conectadas exibem uma mensagem amigável enquanto `INTRANET_BASE_URL` estiver indisponível.

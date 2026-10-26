@@ -7,7 +7,10 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { DailyMessageView } from "@/components/daily-message-view";
+import { HistoryView } from "@/components/history-view";
+import { MonitorView } from "@/components/monitor-view";
 import { PopupsView } from "@/components/popups-view";
+import { SettingsView } from "@/components/settings-view";
 
 const navigation = [
   { label: "Novo aviso", icon: FilePlus2, group: "Comunicação" },
@@ -123,9 +126,15 @@ export default function Home() {
             setClosable={setClosable} submitState={submitState} feedback={feedback} publishNotice={publishNotice} />
         ) : active === "Popups" ? (
           <PopupsView onCreateNotice={() => selectPage("Novo aviso")} />
+        ) : active === "Histórico" ? (
+          <HistoryView />
+        ) : active === "Acessando agora" ? (
+          <MonitorView />
         ) : active === "Mensagem do dia" ? (
           <DailyMessageView />
-        ) : <ComingSoon page={active} />}
+        ) : (
+          <SettingsView />
+        )}
       </section>
     </main>
   );
@@ -203,10 +212,6 @@ function NoticeComposer(props: ComposerProps) {
       </div>
     </div>
   );
-}
-
-function ComingSoon({ page }: { page: string }) {
-  return <div className="content-container placeholder-page"><span className="placeholder-icon"><PanelsTopLeft size={26} /></span><span className="eyebrow">MIGRAÇÃO EM ANDAMENTO</span><h1>{page}</h1><p>Esta área já faz parte da navegação web e será conectada à funcionalidade equivalente da aplicação JavaFX na próxima etapa.</p><button type="button" onClick={() => window.location.reload()}>Voltar ao novo aviso</button></div>;
 }
 
 function criticalityLabel(value: string) {
