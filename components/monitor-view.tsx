@@ -4,6 +4,8 @@ import {
   Activity,
   ArrowDownRight,
   ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Laptop2,
   LoaderCircle,
@@ -53,12 +55,14 @@ export function MonitorView() {
   const [samples, setSamples] = useState<ActivitySample[]>(readStoredSamples);
   const [query, setQuery] = useState("");
   const [displayLimit, setDisplayLimit] = useState("10");
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [resolvingMachines, setResolvingMachines] = useState(false);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const hostnameCache = useRef<Record<string, string>>({});
   const pendingIps = useRef(new Set<string>());
+  const tableScroll = useRef<HTMLDivElement>(null);
 
   const resolveMachines = useCallback(async (visitors: Visitor[]) => {
     const ips = [...new Set(visitors
@@ -144,9 +148,22 @@ export function MonitorView() {
   const identifiedMachines = presence.visitors.filter(
     (visitor) => visitor.machine !== "Não informado",
   ).length;
-  const displayedVisitors = displayLimit === "all"
-    ? filtered
-    : filtered.slice(0, Number(displayLimit));
+  const pageSize = displayLimit === "all" ? Math.max(1, filtered.length) : Number(displayLimit);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const firstResult = (currentPage - 1) * pageSize;
+  const displayedVisitors = filtered.slice(firstResult, firstResult + pageSize);
+  const resultEnd = Math.min(firstResult + displayedVisitors.length, filtered.length);
+
+  useEffect(() => { setPage(1); }, [displayLimit, query]);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  function goToPage(nextPage: number) {
+    setPage(Math.max(1, Math.min(totalPages, nextPage)));
+    tableScroll.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   return (
     <div className="content-container management-page">
@@ -205,36 +222,46 @@ export function MonitorView() {
       ) : filtered.length === 0 ? (
         <div className="empty-state"><Users size={29} /><strong>Nenhum dispositivo encontrado</strong><p>Não há acessos correspondentes à pesquisa.</p></div>
       ) : (
-        <div className="visitor-table-wrap">
-          <table className="visitor-table">
-            <thead>
-              <tr>
-                <th>Dispositivo</th>
-                <th>Endereço IP</th>
-                <th>Última atividade</th>
-                <th>Tempo conectado</th>
-                <th>Status</th>
-                <th>Navegador</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedVisitors.map((visitor, index) => (
-                <tr key={`${visitor.ip}-${visitor.machine}-${index}`}>
-                  <td>
-                    <div className="visitor-device">
-                      <span className="device-icon"><Laptop2 size={15} /></span>
-                      <p><strong>{visitor.machine}</strong><small>Estação de trabalho</small></p>
-                    </div>
-                  </td>
-                  <td><span className="ip-value">{visitor.ip}</span></td>
-                  <td><span className="activity-value">{formatLastActivity(visitor.lastActivity)}</span></td>
-                  <td><span className="time-badge">{formatConnectedTime(visitor.time)}</span></td>
-                  <td><span className="online-badge"><i /> Ativo agora</span></td>
-                  <td><span className="browser-value">{visitor.browser}</span></td>
+        <div className="visitor-table-card">
+          <div className="visitor-table-wrap" ref={tableScroll}>
+            <table className="visitor-table">
+              <thead>
+                <tr>
+                  <th>Dispositivo</th>
+                  <th>Endereço IP</th>
+                  <th>Última atividade</th>
+                  <th>Tempo conectado</th>
+                  <th>Status</th>
+                  <th>Navegador</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {displayedVisitors.map((visitor, index) => (
+                  <tr key={`${visitor.ip}-${visitor.machine}-${index}`}>
+                    <td>
+                      <div className="visitor-device">
+                        <span className="device-icon"><Laptop2 size={15} /></span>
+                        <p><strong>{visitor.machine}</strong><small>Estação de trabalho</small></p>
+                      </div>
+                    </td>
+                    <td><span className="ip-value">{visitor.ip}</span></td>
+                    <td><span className="activity-value">{formatLastActivity(visitor.lastActivity)}</span></td>
+                    <td><span className="time-badge">{formatConnectedTime(visitor.time)}</span></td>
+                    <td><span className="online-badge"><i /> Ativo agora</span></td>
+                    <td><span className="browser-value">{visitor.browser}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="daily-pagination visitor-pagination">
+            <span>Exibindo {firstResult + 1}–{resultEnd} de {filtered.length}</span>
+            <div>
+              <button type="button" aria-label="Página anterior" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}><ChevronLeft size={16} /></button>
+              <strong>Página {currentPage} de {totalPages}</strong>
+              <button type="button" aria-label="Próxima página" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}><ChevronRight size={16} /></button>
+            </div>
+          </div>
         </div>
       )}
     </div>
