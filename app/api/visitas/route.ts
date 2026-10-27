@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
   if (!baseUrl) return NextResponse.json({ error: "Configure INTRANET_BASE_URL no arquivo .env.local." }, { status: 503 });
   const headers = new Headers({ Accept: "application/json" });
@@ -20,6 +24,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const body = await request.json() as { ips?: unknown[] };
     const ips = [...new Set((Array.isArray(body.ips) ? body.ips : [])
@@ -41,7 +48,7 @@ async function resolveHostnames(ips: string[]) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ips }),
       cache: "no-store",
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) return {} as Record<string, string>;
     const payload = await response.json() as { hostnames?: Record<string, string> };

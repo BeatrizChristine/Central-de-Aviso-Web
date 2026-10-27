@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth";
 
 async function proxy(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
   if (!baseUrl) return NextResponse.json({ error: "Configure INTRANET_BASE_URL no arquivo .env.local." }, { status: 503 });
   const headers = new Headers({ Accept: "application/json" });

@@ -48,7 +48,12 @@ const emptyPresence: Presence = {
 };
 
 const activityStorageKey = "central-avisos:online-history";
+const hostnameStorageKey = "central-avisos:hostname-cache";
 const maxActivitySamples = 30;
+const hostnameCacheTtlMs = 12 * 60 * 60 * 1000;
+const hostnameRetryMs = 5 * 60 * 1000;
+const hostnameBatchSize = 16;
+const hostnameBatchConcurrency = 2;
 
 export function MonitorView() {
   const [presence, setPresence] = useState<Presence>(emptyPresence);
@@ -60,35 +65,68 @@ export function MonitorView() {
   const [resolvingMachines, setResolvingMachines] = useState(false);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
-  const hostnameCache = useRef<Record<string, string>>({});
+  const hostnameCache = useRef<Record<string, string>>(readStoredHostnames());
+  const hostnameAttempts = useRef(new Map<string, number>());
   const pendingIps = useRef(new Set<string>());
   const tableScroll = useRef<HTMLDivElement>(null);
 
   const resolveMachines = useCallback(async (visitors: Visitor[]) => {
+    const now = Date.now();
     const ips = [...new Set(visitors
-      .filter((visitor) => visitor.machine === "Não informado" && isPrivateIpv4(visitor.ip) && !pendingIps.current.has(visitor.ip))
+      .filter((visitor) => visitor.machine === "Não informado"
+        && isPrivateIpv4(visitor.ip)
+        && !pendingIps.current.has(visitor.ip)
+        && now - (hostnameAttempts.current.get(visitor.ip) || 0) >= hostnameRetryMs)
       .map((visitor) => visitor.ip))];
     if (ips.length === 0) return;
 
-    ips.forEach((ip) => pendingIps.current.add(ip));
+    ips.forEach((ip) => {
+      pendingIps.current.add(ip);
+      hostnameAttempts.current.set(ip, now);
+    });
     setResolvingMachines(true);
     try {
-      const response = await fetch("/api/visitas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ips }),
-      });
-      if (!response.ok) return;
-      const payload = await response.json() as { hostnames?: Record<string, string> };
-      const hostnames = payload.hostnames || {};
-      hostnameCache.current = { ...hostnameCache.current, ...hostnames };
-      setPresence((current) => ({
-        ...current,
-        visitors: current.visitors.map((visitor) => hostnames[visitor.ip] ? { ...visitor, machine: hostnames[visitor.ip] } : visitor),
-      }));
+      const batches = Array.from(
+        { length: Math.ceil(ips.length / hostnameBatchSize) },
+        (_, index) => ips.slice(index * hostnameBatchSize, (index + 1) * hostnameBatchSize),
+      );
+      let nextBatch = 0;
+
+      async function resolveNextBatch() {
+        while (nextBatch < batches.length) {
+          const batch = batches[nextBatch++];
+          try {
+            const response = await fetch("/api/visitas", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ips: batch }),
+            });
+            if (!response.ok) continue;
+            const payload = await response.json() as { hostnames?: Record<string, string> };
+            const hostnames = payload.hostnames || {};
+            if (Object.keys(hostnames).length === 0) continue;
+
+            hostnameCache.current = { ...hostnameCache.current, ...hostnames };
+            storeHostnames(hostnameCache.current);
+            setPresence((current) => ({
+              ...current,
+              visitors: current.visitors.map((visitor) => hostnames[visitor.ip]
+                ? { ...visitor, machine: hostnames[visitor.ip] }
+                : visitor),
+            }));
+          } finally {
+            batch.forEach((ip) => pendingIps.current.delete(ip));
+          }
+        }
+      }
+
+      await Promise.all(Array.from(
+        { length: Math.min(hostnameBatchConcurrency, batches.length) },
+        () => resolveNextBatch(),
+      ));
     } finally {
       ips.forEach((ip) => pendingIps.current.delete(ip));
-      setResolvingMachines(pendingIps.current.size > 0);
+      setResolvingMachines(false);
     }
   }, []);
 
@@ -120,7 +158,10 @@ export function MonitorView() {
       setUpdatedAt(new Date(now));
       void resolveMachines(visitors);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Falha ao consultar os acessos.");
+      const message = reason instanceof Error ? reason.message : "Falha ao consultar os acessos.";
+      setError(message === "Failed to fetch"
+        ? "O servidor local foi desconectado. Reinicie a Central e atualize esta página."
+        : message);
     } finally {
       setLoading(false);
     }
@@ -128,10 +169,8 @@ export function MonitorView() {
 
   useEffect(() => {
     void load();
-    const secondReading = window.setTimeout(() => void load(true), 2_000);
     const timer = window.setInterval(() => void load(true), 30_000);
     return () => {
-      window.clearTimeout(secondReading);
       window.clearInterval(timer);
     };
   }, [load]);
@@ -309,8 +348,8 @@ function ActivityChart({ samples }: { samples: ActivitySample[] }) {
         <svg className="activity-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Gráfico de dispositivos online ao longo do tempo">
           <defs>
             <linearGradient id="activity-area" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#2460ed" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#2460ed" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#0F897A" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#0F897A" stopOpacity="0.02" />
             </linearGradient>
           </defs>
           {[0, 1, 2, 3, 4].map((line) => {
@@ -381,6 +420,29 @@ function storeSample(current: ActivitySample[], sample: ActivitySample) {
   const limited = next.slice(-maxActivitySamples);
   window.localStorage.setItem(activityStorageKey, JSON.stringify(limited));
   return limited;
+}
+
+function readStoredHostnames(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(hostnameStorageKey) || "null") as {
+      savedAt?: number;
+      hostnames?: Record<string, string>;
+    } | null;
+    if (!stored?.savedAt || Date.now() - stored.savedAt > hostnameCacheTtlMs || !stored.hostnames) {
+      return {};
+    }
+    return stored.hostnames;
+  } catch {
+    return {};
+  }
+}
+
+function storeHostnames(hostnames: Record<string, string>) {
+  window.localStorage.setItem(hostnameStorageKey, JSON.stringify({
+    savedAt: Date.now(),
+    hostnames,
+  }));
 }
 
 function formatLastActivity(input: string) {

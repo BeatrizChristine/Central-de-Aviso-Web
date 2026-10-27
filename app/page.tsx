@@ -11,7 +11,7 @@ import { DailyMessageView } from "@/components/daily-message-view";
 import { FilterSelect } from "@/components/filter-select";
 import { HistoryView } from "@/components/history-view";
 import { IntranetNoticeCard } from "@/components/intranet-notice-card";
-import { LoginView } from "@/components/login-view";
+import { LoginView, type AuthUser } from "@/components/login-view";
 import { MonitorView } from "@/components/monitor-view";
 import { PopupsView } from "@/components/popups-view";
 import { SettingsView } from "@/components/settings-view";
@@ -30,7 +30,8 @@ type SubmitState = "idle" | "sending" | "success" | "error";
 type SelectedAttachment = { name: string; mimeType: string; base64: string; previewUrl: string; size: number };
 
 export default function Home() {
-  const [authenticated, setAuthenticated] = useState(false);
+  const [authenticatedUser, setAuthenticatedUser] = useState<AuthUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [active, setActive] = useState("Novo aviso");
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("checking");
@@ -47,24 +48,32 @@ export default function Home() {
   const [attachment, setAttachment] = useState<SelectedAttachment | null>(null);
 
   useEffect(() => {
-    const restoreSession = window.setTimeout(() => {
-      const remembered = window.localStorage.getItem("central-idam-auth") === "active";
-      const session = window.sessionStorage.getItem("central-idam-auth") === "active";
-      setAuthenticated(remembered || session);
-    }, 0);
-
-    return () => window.clearTimeout(restoreSession);
+    let active = true;
+    fetch("/api/auth/me", { credentials: "same-origin", cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const payload = await response.json() as { user?: AuthUser };
+        return payload.user || null;
+      })
+      .then((user) => {
+        if (active) setAuthenticatedUser(user);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setAuthChecked(true);
+      });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
-    if (!authenticated) return;
+    if (!authenticatedUser) return;
     fetch("/api/status")
       .then(async (response) => {
         const status = (await response.json()) as { configured?: boolean; online?: boolean };
         setApiState(!status.configured ? "unconfigured" : status.online ? "online" : "offline");
       })
       .catch(() => setApiState("offline"));
-  }, [authenticated]);
+  }, [authenticatedUser]);
 
   const apiLabel = useMemo(() => {
     if (apiState === "checking") return "Verificando servidor";
@@ -78,19 +87,17 @@ export default function Home() {
     setMenuOpen(false);
   }
 
-  function login(remember: boolean) {
-    const storage = remember ? window.localStorage : window.sessionStorage;
-    const otherStorage = remember ? window.sessionStorage : window.localStorage;
-    storage.setItem("central-idam-auth", "active");
-    otherStorage.removeItem("central-idam-auth");
-    setAuthenticated(true);
+  function login(user: AuthUser) {
+    setAuthenticatedUser(user);
   }
 
-  function logout() {
-    window.localStorage.removeItem("central-idam-auth");
-    window.sessionStorage.removeItem("central-idam-auth");
-    setAuthenticated(false);
-    setMenuOpen(false);
+  async function logout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    } finally {
+      setAuthenticatedUser(null);
+      setMenuOpen(false);
+    }
   }
 
   async function publishNotice(event: FormEvent<HTMLFormElement>) {
@@ -119,7 +126,10 @@ export default function Home() {
     }
   }
 
-  if (!authenticated) return <LoginView onLogin={login} />;
+  if (!authChecked) {
+    return <main className="auth-loading" aria-busy="true"><BellRing size={30} /><span>Verificando sessão…</span></main>;
+  }
+  if (!authenticatedUser) return <LoginView onLogin={login} />;
 
   return (
     <main className="app-shell">
@@ -148,7 +158,11 @@ export default function Home() {
           </nav>
         ))}
         <div className="sidebar-footer">
-          <button type="button" className="nav-item" onClick={logout}><LogOut size={18} /><span>Sair</span></button>
+          <div className="signed-user" title={authenticatedUser.email || authenticatedUser.username}>
+            <span>{authenticatedUser.name.slice(0, 1).toLocaleUpperCase("pt-BR")}</span>
+            <div><strong>{authenticatedUser.name}</strong><small>{authenticatedUser.username}</small></div>
+          </div>
+          <button type="button" className="nav-item" onClick={() => void logout()}><LogOut size={18} /><span>Sair</span></button>
           <div className={`server-status status-${apiState}`}><span className="status-dot" /><span>{apiLabel}</span></div>
         </div>
       </aside>
@@ -275,7 +289,7 @@ function NoticeComposer(props: ComposerProps) {
         <aside className="preview-panel">
           <div className="preview-heading"><span><Eye size={17} /> Pré-visualização</span><small>Atualização automática</small></div>
           <div className="browser-preview">
-            <div className="browser-bar"><i /><i /><i /><span>intranet.idam.am.gov.br</span></div>
+            <div className="browser-bar"><i /><i /><i /><span>intranet.exemplo.gov.br</span></div>
             <div className="preview-background">
               <IntranetNoticeCard variant="preview" notice={{
                 title: props.title || "Título do seu aviso",

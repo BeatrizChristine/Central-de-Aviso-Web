@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
   const path = request.nextUrl.searchParams.get("path")?.trim() || "";
   if (!baseUrl) return NextResponse.json({ error: "Servidor da Intranet não configurado." }, { status: 503 });

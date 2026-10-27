@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
   if (!baseUrl) return NextResponse.json({ configured: false, online: false });
   const headers = new Headers({ Accept: "application/json" });

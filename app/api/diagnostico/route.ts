@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth";
 
 const paths = [
   { key: "avisos", path: "/api/avisos" },
@@ -6,7 +7,10 @@ const paths = [
   { key: "visitas", path: "/api/visitas" },
 ] as const;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const unauthorized = await requireApiSession(request);
+  if (unauthorized) return unauthorized;
+
   const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
   if (!baseUrl) return NextResponse.json({ configured: false, server: null, tokenConfigured: false, endpoints: [] });
   const headers = new Headers({ Accept: "application/json" });

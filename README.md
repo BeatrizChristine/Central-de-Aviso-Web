@@ -8,7 +8,29 @@ Versão web da Central de Avisos, construída com TypeScript, React e Next.js. A
 2. Informe em `INTRANET_BASE_URL` o endereço do servidor da Intranet.
 3. Se necessário, informe `INTRANET_AVISOS_TOKEN`.
 
-O endereço padrão conhecido é `http://intranet.idam.am.gov.br:3000` e só fica acessível quando o computador está conectado à rede interna. Para desenvolvimento com um servidor executado no próprio computador, substitua-o por `http://localhost:3000`.
+## Login com Active Directory
+
+O login valida as credenciais diretamente no Active Directory do IDAM. A senha é usada somente
+durante o bind LDAP e não é armazenada. Depois da validação, a Central cria uma sessão assinada em
+cookie `HttpOnly`; as rotas de avisos, mensagens, anexos, visitas e diagnóstico recusam chamadas sem
+uma sessão válida.
+
+Configure no `.env.local`:
+
+```dotenv
+CENTRAL_AD_URL=ldaps://dc01.exemplo.local:636
+CENTRAL_AD_DOMAIN=exemplo.local
+CENTRAL_AD_BASE_DN=DC=exemplo,DC=local
+CENTRAL_AD_ALLOWED_GROUPS=CENTRAL_AVISOS_ADMIN,CENTRAL_AVISOS_OPERADOR
+CENTRAL_AD_ALLOW_INSECURE_LDAP=false
+CENTRAL_AUTH_SECRET=gere-um-segredo-aleatorio-com-pelo-menos-32-caracteres
+```
+
+Mantenha os endereços, nomes de domínio, grupos e segredos reais exclusivamente no `.env.local`.
+Para produção, use LDAPS com certificado válido e mantenha
+`CENTRAL_AD_ALLOW_INSECURE_LDAP=false`.
+
+O servidor da Intranet só fica acessível quando o computador está conectado à rede interna. Para desenvolvimento com um servidor executado no próprio computador, use `http://localhost:3000`.
 
 ## Executar
 
@@ -22,10 +44,16 @@ Acesse o endereço exibido no terminal, normalmente `http://localhost:5173`.
 
 O comando `npm.cmd run dev` também inicia, em `127.0.0.1:5190`, um resolvedor local de nomes de máquinas. Ele recebe somente IPs privados devolvidos pela API, consulta o nome pelo Windows e mantém os resultados em cache. Por isso, a tela **Acessando agora** mostra o hostname e o IP quando o notebook está conectado à rede interna.
 
-Se quiser iniciar apenas a interface, sem resolução de nomes, use:
+Para usar outra porta e manter a resolução de nomes ativa, use, por exemplo:
 
 ```powershell
-npm.cmd run dev:web
+npm.cmd run dev:web -- --port 5174
+```
+
+Se quiser iniciar apenas a interface, sem o serviço de resolução de nomes, use:
+
+```powershell
+npm.cmd run dev:interface -- --port 5174
 ```
 
 ## Compilar
