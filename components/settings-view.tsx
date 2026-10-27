@@ -5,21 +5,45 @@ import { useCallback, useEffect, useState } from "react";
 
 type Endpoint = { key: string; path: string; online: boolean; status: number | null; latencyMs: number };
 type Diagnostics = { configured: boolean; server: string | null; tokenConfigured: boolean; checkedAt?: string; endpoints: Endpoint[] };
+type TestFeedback = { tone: "success" | "warning"; message: string };
 
 export function SettingsView() {
   const [data, setData] = useState<Diagnostics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [manualCheck, setManualCheck] = useState(false);
   const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState<TestFeedback | null>(null);
 
-  const check = useCallback(async () => {
-    setLoading(true); setError("");
+  const check = useCallback(async (manual = false) => {
+    setLoading(true);
+    setError("");
+    if (manual) {
+      setManualCheck(true);
+      setFeedback(null);
+    }
     try {
-      const response = await fetch("/api/diagnostico", { cache: "no-store" });
+      const response = await fetch(`/api/diagnostico?check=${Date.now()}`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload?.error || "Não foi possível verificar a configuração.");
       setData(payload);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Falha na verificação."); }
-    finally { setLoading(false); }
+      if (manual) {
+        const endpoints = Array.isArray(payload?.endpoints) ? payload.endpoints : [];
+        const onlineCount = endpoints.filter((endpoint: Endpoint) => endpoint.online).length;
+        const allResponded = endpoints.length > 0 && onlineCount === endpoints.length;
+        const checkedTime = payload?.checkedAt ? new Date(payload.checkedAt).toLocaleTimeString("pt-BR") : new Date().toLocaleTimeString("pt-BR");
+        setFeedback({
+          tone: allResponded ? "success" : "warning",
+          message: allResponded
+            ? `Teste concluído às ${checkedTime}. Todos os ${endpoints.length} serviços responderam.`
+            : `Teste concluído às ${checkedTime}. ${onlineCount} de ${endpoints.length} serviços responderam.`,
+        });
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Falha na verificação.");
+    } finally {
+      setLoading(false);
+      setManualCheck(false);
+    }
   }, []);
 
   useEffect(() => { void check(); }, [check]);
@@ -27,7 +51,9 @@ export function SettingsView() {
 
   return (
     <div className="content-container management-page">
-      <div className="management-heading"><div><span className="eyebrow">ADMINISTRAÇÃO</span><h1>Configurações</h1><p>Diagnóstico da conexão entre a Central de Avisos e a Intranet.</p></div><button type="button" className="secondary-button" onClick={() => void check()} disabled={loading}><RefreshCw size={16} /> Testar conexão</button></div>
+      <div className="management-heading"><div><span className="eyebrow">ADMINISTRAÇÃO</span><h1>Configurações</h1><p>Diagnóstico da conexão entre a Central de Avisos e a Intranet.</p></div><button type="button" className="secondary-button" onClick={() => void check(true)} disabled={loading} aria-busy={manualCheck}>{manualCheck ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />}{manualCheck ? "Testando…" : "Testar conexão"}</button></div>
+      {manualCheck && <div className="inline-notice connection-test-running" role="status" aria-live="polite"><LoaderCircle className="spin" size={17} /> Testando a conexão com os serviços da Intranet…</div>}
+      {feedback && !manualCheck && <div className={`inline-notice connection-test-${feedback.tone}`} role="status" aria-live="polite">{feedback.tone === "success" ? <CheckCircle2 size={17} /> : <XCircle size={17} />}{feedback.message}</div>}
       {error && <div className="inline-notice inline-error"><XCircle size={17} /> {error}</div>}
       <div className="settings-grid">
         <section className="settings-card connection-card">

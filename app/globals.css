@@ -283,6 +283,9 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
 .connection-summary strong, .connection-summary small { display: block; }
 .connection-summary strong { font-size: 9px; }
 .connection-summary small { color: #718198; font-size: 7px; margin-top: 2px; }
+.connection-test-running { color: #315d9f; background: #edf4ff; border-color: #ccdcf8; }
+.connection-test-success { color: #087854; background: #e7f8f0; border-color: #bcebd8; }
+.connection-test-warning { color: #98600b; background: #fff7e5; border-color: #f0d590; }
 .security-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 17px; }
 .security-row > svg { color: #315d9f; }
 .security-row strong, .security-row small { display: block; }
