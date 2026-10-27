@@ -64,8 +64,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
         <span className="login-decoration login-decoration-bottom" />
 
         <div className="login-presentation-content">
-          <LoginBrand />
-
           <div className="login-message">
             <h1>Informação <span>para todos,</span> em um só lugar.</h1>
             <p>Acompanhe avisos, comunicados e informações importantes da Intranet do IDAM de forma rápida e organizada.</p>

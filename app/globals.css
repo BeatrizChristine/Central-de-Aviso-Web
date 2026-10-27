@@ -20,7 +20,7 @@ button:disabled { cursor: not-allowed; opacity: .62; }
 .login-brand strong, .login-brand small { display: block; }
 .login-brand strong { color: #0d2147; font-size: 21px; letter-spacing: -.035em; }
 .login-brand small { color: #607799; font-size: 13px; margin-top: 4px; }
-.login-message { margin-top: clamp(62px, 10vh, 110px); }
+.login-message { margin-top: 0; }
 .login-message h1 { max-width: 500px; color: #091a3e; font-size: clamp(40px, 4.2vw, 62px); line-height: 1.04; letter-spacing: -.055em; margin: 0; }
 .login-message h1 span { display: block; color: #1f62ee; }
 .login-message > p { max-width: 500px; color: #607594; font-size: 16px; line-height: 1.55; margin: 25px 0 0; }
