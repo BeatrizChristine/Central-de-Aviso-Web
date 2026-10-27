@@ -1,9 +1,10 @@
 "use client";
 
-import { CalendarDays, CheckCircle2, Clock3, History, LoaderCircle, RefreshCw, Search, XCircle } from "lucide-react";
+import { CheckCircle2, History, LoaderCircle, RefreshCw, Search, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusFilter } from "@/components/status-filter";
 import { FilterSelect } from "@/components/filter-select";
+import { IntranetNoticeCard } from "@/components/intranet-notice-card";
 
 type HistoryItem = {
   id: string;
@@ -12,8 +13,12 @@ type HistoryItem = {
   active: boolean;
   criticality: string;
   priority: string;
+  link?: string;
+  imageUrl?: string;
+  imageMimeType?: string;
   publishedDate?: string;
   expirationDate?: string;
+  closable?: boolean;
 };
 
 export function HistoryView() {
@@ -38,8 +43,12 @@ export function HistoryView() {
         active: Boolean(raw.active ?? raw.ativo ?? true),
         criticality: String(raw.criticality ?? raw.criticidade ?? "informative"),
         priority: String(raw.priority ?? raw.prioridade ?? "normal"),
+        link: text(raw.link),
+        imageUrl: text(raw.imageUrl ?? raw.imagem ?? raw.imageData),
+        imageMimeType: text(raw.imageMimeType ?? raw.mimeType),
         publishedDate: text(raw.publishedDate ?? raw.dataPublicacao ?? raw.createdAt),
         expirationDate: text(raw.expirationDate ?? raw.dataExpiracao),
+        closable: Boolean(raw.closable ?? raw.podeFechar ?? true),
       })));
     } catch (reason) { setItems([]); setError(reason instanceof Error ? reason.message : "Falha ao carregar o histórico."); }
     finally { setLoading(false); }
@@ -65,7 +74,7 @@ export function HistoryView() {
         <FilterSelect label="ORDENAR" value={order} onValueChange={setOrder} options={[{ value: "recent", label: "Mais recentes" }, { value: "oldest", label: "Mais antigos" }]} />
       </div>
       {error && <div className="inline-notice inline-error"><XCircle size={17} /> {error}</div>}
-      {loading ? <div className="empty-state"><LoaderCircle className="spin" size={30} /><strong>Carregando histórico…</strong></div> : filtered.length === 0 ? <div className="empty-state"><History size={29} /><strong>Nenhum aviso encontrado</strong><p>Altere os filtros ou publique um novo aviso.</p></div> : <div className="history-list">{filtered.map((item) => <article key={item.id}><div className={`history-marker marker-${theme(item.criticality)}`} /><div className="history-main"><div className="history-title-row"><div><span>#{item.id}</span><h2>{item.title}</h2></div><span className={`state-badge ${item.active ? "state-active" : "state-inactive"}`}>{item.active ? "Ativo" : "Inativo"}</span></div><p>{item.message || "Sem mensagem informada."}</p><div className="history-meta"><span><CalendarDays size={14} /> Publicado: {formatDate(item.publishedDate)}</span>{item.expirationDate && <span><Clock3 size={14} /> Expira: {formatDate(item.expirationDate)}</span>}<span className="history-classification">{label(item.criticality)} · {priority(item.priority)}</span></div></div></article>)}</div>}
+      {loading ? <div className="empty-state"><LoaderCircle className="spin" size={30} /><strong>Carregando histórico…</strong></div> : filtered.length === 0 ? <div className="empty-state"><History size={29} /><strong>Nenhum aviso encontrado</strong><p>Altere os filtros ou publique um novo aviso.</p></div> : <div className="history-list">{filtered.map((item) => <IntranetNoticeCard key={item.id} notice={item} />)}</div>}
     </div>
   );
 }
@@ -74,7 +83,3 @@ function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; la
 function text(value: unknown) { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
 function apiError(payload: unknown, fallback: string) { return payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : fallback; }
 function dateValue(value?: string) { if (!value) return 0; const parsed = new Date(value).getTime(); return Number.isNaN(parsed) ? 0 : parsed; }
-function formatDate(value?: string) { if (!value) return "Não informada"; const parsed = new Date(value); return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(parsed); }
-function theme(value: string) { const normalized = value.toLowerCase(); return normalized.includes("critic") ? "critical" : normalized.includes("attention") || normalized.includes("high") ? "attention" : "normal"; }
-function label(value: string) { const current = theme(value); return current === "critical" ? "Crítico" : current === "attention" ? "Atenção" : "Informativo"; }
-function priority(value: string) { const normalized = value.toLowerCase(); if (normalized.includes("urgent") || normalized.includes("immediate")) return "Urgente"; if (normalized.includes("high")) return "Alta"; if (normalized.includes("low")) return "Baixa"; return "Normal"; }

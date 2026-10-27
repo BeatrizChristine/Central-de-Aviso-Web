@@ -1,13 +1,16 @@
 "use client";
 
 import {
-  Activity, AlertTriangle, BellRing, CalendarClock, ChevronRight, CircleAlert, CircleCheck, Eye,
-  ExternalLink, FilePlus2, History, Info, LogOut, Menu, PanelsTopLeft,
+  Activity, BellRing, CalendarClock, ChevronRight, CircleCheck, Eye,
+  FilePlus2, History, Info, LogOut, Menu, PanelsTopLeft,
   Send, Settings2, SunMedium, UploadCloud, Wifi, X,
 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { DateTimeField } from "@/components/date-time-field";
 import { DailyMessageView } from "@/components/daily-message-view";
+import { FilterSelect } from "@/components/filter-select";
 import { HistoryView } from "@/components/history-view";
+import { IntranetNoticeCard } from "@/components/intranet-notice-card";
 import { MonitorView } from "@/components/monitor-view";
 import { PopupsView } from "@/components/popups-view";
 import { SettingsView } from "@/components/settings-view";
@@ -23,6 +26,7 @@ const navigation = [
 
 type ApiState = "checking" | "online" | "unconfigured" | "offline";
 type SubmitState = "idle" | "sending" | "success" | "error";
+type SelectedAttachment = { name: string; mimeType: string; base64: string; previewUrl: string; size: number };
 
 export default function Home() {
   const [active, setActive] = useState("Novo aviso");
@@ -38,6 +42,7 @@ export default function Home() {
   const [publishedDate, setPublishedDate] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
   const [closable, setClosable] = useState(true);
+  const [attachment, setAttachment] = useState<SelectedAttachment | null>(null);
 
   useEffect(() => {
     fetch("/api/status")
@@ -73,6 +78,7 @@ export default function Home() {
           title: title.trim(), message: message.trim(), priority, criticality,
           link: link.trim() || null, publishedDate: publishedDate || null,
           expirationDate: expirationDate || null, active: true, closable,
+          ...(attachment ? { imageBase64: attachment.base64, imageMimeType: attachment.mimeType } : {}),
         }),
       });
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -123,7 +129,8 @@ export default function Home() {
             criticality={criticality} setCriticality={setCriticality} priority={priority} setPriority={setPriority}
             link={link} setLink={setLink} publishedDate={publishedDate} setPublishedDate={setPublishedDate}
             expirationDate={expirationDate} setExpirationDate={setExpirationDate} closable={closable}
-            setClosable={setClosable} submitState={submitState} feedback={feedback} publishNotice={publishNotice} />
+            setClosable={setClosable} attachment={attachment} setAttachment={setAttachment}
+            submitState={submitState} feedback={feedback} publishNotice={publishNotice} />
         ) : active === "Popups" ? (
           <PopupsView onCreateNotice={() => selectPage("Novo aviso")} />
         ) : active === "Histórico" ? (
@@ -149,11 +156,45 @@ type ComposerProps = {
   publishedDate: string; setPublishedDate: (value: string) => void;
   expirationDate: string; setExpirationDate: (value: string) => void;
   closable: boolean; setClosable: (value: boolean) => void;
+  attachment: SelectedAttachment | null; setAttachment: (value: SelectedAttachment | null) => void;
   submitState: SubmitState; feedback: string;
   publishNotice: (event: FormEvent<HTMLFormElement>) => Promise<void>;
 };
 
 function NoticeComposer(props: ComposerProps) {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [attachmentError, setAttachmentError] = useState("");
+
+  async function selectAttachment(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAttachmentError("");
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setAttachmentError("Formato não suportado. Use JPG, PNG, GIF ou WEBP.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAttachmentError("A imagem excede o limite de 5 MB.");
+      event.target.value = "";
+      return;
+    }
+    try {
+      const previewUrl = await readFileAsDataUrl(file);
+      props.setAttachment({ name: file.name, mimeType: file.type, base64: previewUrl.split(",")[1] || "", previewUrl, size: file.size });
+    } catch (error) {
+      setAttachmentError(error instanceof Error ? error.message : "Não foi possível ler a imagem.");
+      event.target.value = "";
+    }
+  }
+
+  function removeAttachment() {
+    props.setAttachment(null);
+    setAttachmentError("");
+    if (fileInput.current) fileInput.current.value = "";
+  }
+
   return (
     <div className="content-container">
       <div className="breadcrumb">Central de Avisos <ChevronRight size={13} /> Novo aviso</div>
@@ -174,17 +215,26 @@ function NoticeComposer(props: ComposerProps) {
               <small className="field-counter">{props.message.length}/1000</small>
             </label>
             <div className="field-row">
-              <label>Criticidade<select value={props.criticality} onChange={(event) => props.setCriticality(event.target.value)}><option value="informative">Informativa</option><option value="attention">Atenção</option><option value="critical">Crítica</option></select></label>
-              <label>Prioridade<select value={props.priority} onChange={(event) => props.setPriority(event.target.value)}><option value="low">Baixa</option><option value="normal">Normal</option><option value="high">Alta</option></select></label>
+              <FilterSelect label="CRITICIDADE" value={props.criticality} onValueChange={props.setCriticality} options={[{ value: "informative", label: "Informativa" }, { value: "attention", label: "Moderada" }, { value: "critical", label: "Crítica" }]} />
+              <FilterSelect label="PRIORIDADE" value={props.priority} onValueChange={props.setPriority} options={[{ value: "low", label: "Baixa" }, { value: "normal", label: "Normal" }, { value: "high", label: "Alta" }]} />
             </div>
             <label>Link complementar<input type="url" value={props.link} onChange={(event) => props.setLink(event.target.value)} placeholder="https://intranet.exemplo.gov.br/pagina" /></label>
-            <div className="upload-box"><span className="upload-icon"><UploadCloud size={22} /></span><span><strong>Anexar mídia</strong><small>Imagem, PDF ou vídeo de até 5 MB.</small></span><button type="button" disabled>Selecionar arquivo</button></div>
+            <div className={`upload-box ${props.attachment ? "upload-box-selected" : ""}`}>
+              <input ref={fileInput} className="upload-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={(event) => void selectAttachment(event)} />
+              <span className="upload-icon"><UploadCloud size={22} /></span>
+              <span><strong>{props.attachment?.name || "Anexar imagem"}</strong><small>{props.attachment ? `${formatFileSize(props.attachment.size)} · ${props.attachment.mimeType}` : "JPG, PNG, GIF ou WEBP de até 5 MB."}</small></span>
+              <div className="upload-actions">
+                {props.attachment && <button type="button" className="upload-remove" onClick={removeAttachment}>Remover</button>}
+                <button type="button" onClick={() => fileInput.current?.click()}>{props.attachment ? "Trocar imagem" : "Selecionar imagem"}</button>
+              </div>
+            </div>
+            {attachmentError && <div className="upload-error" role="alert">{attachmentError}</div>}
           </section>
           <section className="form-section">
             <div className="section-heading"><span className="section-icon"><CalendarClock size={19} /></span><span><strong>Publicação</strong><small>Defina o período de exibição do aviso.</small></span></div>
             <div className="field-row">
-              <label>Publicar em<input type="datetime-local" value={props.publishedDate} onChange={(event) => props.setPublishedDate(event.target.value)} /></label>
-              <label>Expirar em<input type="datetime-local" value={props.expirationDate} onChange={(event) => props.setExpirationDate(event.target.value)} /></label>
+              <DateTimeField label="Publicar em" value={props.publishedDate} onChange={props.setPublishedDate} />
+              <DateTimeField label="Expirar em" value={props.expirationDate} min={props.publishedDate || undefined} onChange={props.setExpirationDate} />
             </div>
             <label className="check-row"><input type="checkbox" checked={props.closable} onChange={(event) => props.setClosable(event.target.checked)} /><span><strong>Permitir fechar o aviso</strong><small>O colaborador poderá dispensar o popup.</small></span></label>
           </section>
@@ -197,33 +247,20 @@ function NoticeComposer(props: ComposerProps) {
           <div className="browser-preview">
             <div className="browser-bar"><i /><i /><i /><span>intranet.idam.am.gov.br</span></div>
             <div className="preview-background">
-              <div className={`intranet-popup-preview intranet-popup-preview-${props.criticality}`}>
-                <div className="intranet-popup-accent" />
-                <div className="intranet-popup-header">
-                  <div className="intranet-popup-heading-main">
-                    <span className="intranet-popup-brand-icon"><BellRing size={15} /></span>
-                    <div>
-                      <h2>{props.title || "Título do seu aviso"}</h2>
-                      <div className="intranet-popup-meta">
-                        <span className="intranet-popup-badge">{criticalityLabel(props.criticality)} - {priorityLabel(props.priority)}</span>
-                        <span className="intranet-popup-active"><CircleCheck size={11} /> Ativo</span>
-                      </div>
-                    </div>
-                  </div>
-                  {props.closable && <button type="button" aria-label="Fechar prévia"><X size={15} /></button>}
-                </div>
-                <div className="intranet-popup-body">
-                  <div className="intranet-popup-alert">
-                    <span className="intranet-popup-alert-icon">{previewAlertIcon(props.criticality)}</span>
-                    <div>
-                      <p>{props.message || "A mensagem aparecerá aqui enquanto você preenche o formulário."}</p>
-                      {props.link && <span className="intranet-popup-link">Saiba mais <ExternalLink size={12} /></span>}
-                    </div>
-                  </div>
-                  {props.expirationDate && <div className="intranet-popup-expiration"><CalendarClock size={13} /><span><small>EXPIRA</small><strong>{formatPreviewDate(props.expirationDate)}</strong></span></div>}
-                  <div className="intranet-popup-footer">{props.closable && <button type="button">Fechar</button>}</div>
-                </div>
-              </div>
+              <IntranetNoticeCard variant="preview" notice={{
+                title: props.title || "Título do seu aviso",
+                message: props.message || "A mensagem aparecerá aqui enquanto você preenche o formulário.",
+                criticality: props.criticality,
+                priority: props.priority,
+                link: props.link || undefined,
+                imageUrl: props.attachment?.previewUrl,
+                imageMimeType: props.attachment?.mimeType,
+                imageName: props.attachment?.name,
+                publishedDate: props.publishedDate || undefined,
+                expirationDate: props.expirationDate || undefined,
+                closable: props.closable,
+                active: true,
+              }} />
             </div>
           </div>
           <div className="preview-note"><Wifi size={16} /><span><strong>Sincronizado com o formulário</strong><small>O resultado final pode variar de acordo com a tela do colaborador.</small></span></div>
@@ -233,27 +270,16 @@ function NoticeComposer(props: ComposerProps) {
   );
 }
 
-function criticalityLabel(value: string) {
-  if (value === "critical") return "Crítica";
-  if (value === "attention") return "Moderada";
-  return "Informativa";
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Não foi possível ler a imagem."));
+    reader.readAsDataURL(file);
+  });
 }
 
-function priorityLabel(value: string) {
-  if (value === "high") return "Alta";
-  if (value === "low") return "Baixa";
-  return "Normal";
-}
-
-function previewAlertIcon(value: string) {
-  if (value === "critical") return <AlertTriangle size={16} />;
-  if (value === "attention") return <CircleAlert size={16} />;
-  return <Info size={16} />;
-}
-
-function formatPreviewDate(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? value
-    : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+function formatFileSize(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} MB`;
 }

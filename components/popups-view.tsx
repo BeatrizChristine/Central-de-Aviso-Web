@@ -2,11 +2,8 @@
 
 import {
   AlertTriangle,
-  CalendarClock,
-  ExternalLink,
   FilePlus2,
   LoaderCircle,
-  Paperclip,
   RefreshCw,
   Search,
   ToggleLeft,
@@ -14,6 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { IntranetNoticeCard } from "@/components/intranet-notice-card";
 import { StatusFilter } from "@/components/status-filter";
 
 type PopupRecord = {
@@ -25,8 +23,10 @@ type PopupRecord = {
   priority: string;
   link?: string;
   imageUrl?: string;
+  imageMimeType?: string;
   publishedDate?: string;
   expirationDate?: string;
+  closable?: boolean;
 };
 
 type RawPopup = Record<string, unknown>;
@@ -131,22 +131,12 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
       ) : (
         <div className="popup-list">
           {filtered.map((item) => (
-            <article className={`popup-card-web criticality-${criticalityTheme(item.criticality)}`} key={item.id}>
-              <div className="popup-card-top">
-                <div><span className="popup-type">{criticalityLabel(item.criticality)} · {priorityLabel(item.priority)}</span><h2>{item.title}</h2></div>
-                <span className={`state-badge ${item.active ? "state-active" : "state-inactive"}`}>{item.active ? "Ativo" : "Inativo"}</span>
-              </div>
-              <p className="popup-message">{item.message || "Sem mensagem informada."}</p>
-              <div className="popup-meta">
-                {item.expirationDate && <span><CalendarClock size={14} /> Expira em {formatDate(item.expirationDate)}</span>}
-                {item.imageUrl && <span><Paperclip size={14} /> Possui anexo</span>}
-                {item.link && <a href={item.link} target="_blank" rel="noreferrer"><ExternalLink size={14} /> Abrir link</a>}
-              </div>
-              <div className="popup-card-actions">
+            <IntranetNoticeCard key={item.id} notice={item} actions={
+              <>
                 <button type="button" className="secondary-button" disabled={actionId === item.id} onClick={() => void toggle(item)}>{item.active ? <ToggleRight size={17} /> : <ToggleLeft size={17} />}{item.active ? "Desativar" : "Ativar"}</button>
                 <button type="button" className="danger-button-web" disabled={actionId === item.id} onClick={() => void remove(item)}><Trash2 size={16} /> Excluir</button>
-              </div>
-            </article>
+              </>
+            } />
           ))}
         </div>
       )}
@@ -164,14 +154,12 @@ function normalizePopup(raw: RawPopup, index: number): PopupRecord {
     priority: String(raw.priority ?? raw.prioridade ?? "normal"),
     link: optionalText(raw.link),
     imageUrl: optionalText(raw.imageUrl ?? raw.imagem ?? raw.imageData),
-    publishedDate: optionalText(raw.publishedDate ?? raw.dataPublicacao),
+    imageMimeType: optionalText(raw.imageMimeType ?? raw.mimeType),
+    publishedDate: optionalText(raw.publishedDate ?? raw.dataPublicacao ?? raw.createdAt),
     expirationDate: optionalText(raw.expirationDate ?? raw.dataExpiracao),
+    closable: Boolean(raw.closable ?? raw.podeFechar ?? true),
   };
 }
 
 function optionalText(value: unknown) { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
 function errorMessage(payload: unknown, fallback: string) { return payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : fallback; }
-function criticalityTheme(value: string) { const normalized = value.toLowerCase(); return normalized.includes("critic") ? "critical" : normalized.includes("high") || normalized.includes("attention") ? "attention" : "normal"; }
-function criticalityLabel(value: string) { const theme = criticalityTheme(value); return theme === "critical" ? "Crítico" : theme === "attention" ? "Atenção" : "Informativo"; }
-function priorityLabel(value: string) { const normalized = value.toLowerCase(); if (normalized.includes("urgent") || normalized.includes("immediate")) return "Urgente"; if (normalized.includes("high")) return "Alta"; if (normalized.includes("low")) return "Baixa"; return "Normal"; }
-function formatDate(value: string) { const date = new Date(value); return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date); }
