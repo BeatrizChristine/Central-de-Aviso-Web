@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BellRing, CalendarClock, CircleAlert, CircleCheck, ExternalLink, FileText, Info, Paperclip, X } from "lucide-react";
+import { AlertTriangle, BellRing, CalendarClock, CircleAlert, CircleCheck, ExternalLink, FileText, Info, X } from "lucide-react";
 import { ReactNode, useMemo, useState } from "react";
 
 export type IntranetNoticeData = {
@@ -49,7 +49,7 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
           <span className="intranet-popup-alert-icon">{alertIcon(theme)}</span>
           <div>
             <p>{notice.message || "A mensagem aparecerá aqui enquanto você preenche o formulário."}</p>
-            {notice.imageUrl && <NoticeAttachment notice={notice} />}
+            {notice.imageUrl && <NoticeAttachment notice={notice} showFileName={variant !== "preview"} />}
             {notice.link && <a className="intranet-popup-link" href={notice.link} target="_blank" rel="noreferrer">Saiba mais <ExternalLink size={12} /></a>}
           </div>
         </div>
@@ -69,7 +69,7 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
   );
 }
 
-function NoticeAttachment({ notice }: { notice: IntranetNoticeData }) {
+function NoticeAttachment({ notice, showFileName }: { notice: IntranetNoticeData; showFileName: boolean }) {
   const [failed, setFailed] = useState(false);
   const source = useMemo(() => attachmentUrl(notice.imageUrl || ""), [notice.imageUrl]);
   const mime = (notice.imageMimeType || inferMime(source)).toLowerCase();
@@ -79,7 +79,7 @@ function NoticeAttachment({ notice }: { notice: IntranetNoticeData }) {
     return (
       <figure className="notice-attachment-preview">
         <img src={source} alt={notice.imageName || notice.title || "Imagem do aviso"} onError={() => setFailed(true)} />
-        {notice.imageName && <figcaption>{notice.imageName}</figcaption>}
+        {showFileName && notice.imageName && <figcaption>{notice.imageName}</figcaption>}
       </figure>
     );
   }
