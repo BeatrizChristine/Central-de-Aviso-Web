@@ -1,3 +1,5 @@
+import { FilterSelect } from "@/components/filter-select";
+
 type StatusFilterValue = "all" | "active" | "inactive";
 
 type StatusFilterProps = {
@@ -13,21 +15,6 @@ const options: { value: StatusFilterValue; label: string }[] = [
 
 export function StatusFilter({ value, onChange }: StatusFilterProps) {
   return (
-    <div className="status-filter">
-      <span>STATUS</span>
-      <div className="status-filter-buttons" role="group" aria-label="Filtrar por status">
-        {options.map((option) => (
-          <button
-            type="button"
-            key={option.value}
-            className={value === option.value ? "active" : ""}
-            aria-pressed={value === option.value}
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-    </div>
+    <FilterSelect label="STATUS" value={value} options={options} onValueChange={(nextValue) => onChange(nextValue as StatusFilterValue)} />
   );
 }

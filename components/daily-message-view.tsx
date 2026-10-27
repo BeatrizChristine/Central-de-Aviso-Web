@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FilterSelect } from "@/components/filter-select";
 
 type ListedMessage = {
   message: string;
@@ -198,22 +199,13 @@ export function DailyMessageView() {
               </div>
             </label>
             <div className="monitor-list-options">
-              <div className="list-limit-control" role="group" aria-label="Quantidade de mensagens por página">
-                <span>Mostrar</span>
-                <div className="list-limit-buttons">
-                  {[10, 25, 50].map((size) => (
-                    <button
-                      type="button"
-                      key={size}
-                      className={pageSize === size ? "active" : ""}
-                      aria-pressed={pageSize === size}
-                      onClick={() => changePageSize(size)}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <FilterSelect
+                compact
+                label="Mostrar"
+                value={String(pageSize)}
+                options={[10, 25, 50].map((size) => ({ value: String(size), label: String(size) }))}
+                onValueChange={(value) => changePageSize(Number(value))}
+              />
               <div className="monitor-results">
                 <span>{filteredMessages.length} encontradas</span>
                 <span>Exibindo {visibleMessages.length} de {filteredMessages.length}</span>

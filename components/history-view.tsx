@@ -3,6 +3,7 @@
 import { CalendarDays, CheckCircle2, Clock3, History, LoaderCircle, RefreshCw, Search, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusFilter } from "@/components/status-filter";
+import { FilterSelect } from "@/components/filter-select";
 
 type HistoryItem = {
   id: string;
@@ -61,7 +62,7 @@ export function HistoryView() {
       <div className="filter-card history-filters">
         <label className="search-control"><span>BUSCAR</span><div><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Título ou conteúdo" /></div></label>
         <StatusFilter value={state} onChange={setState} />
-        <label><span>ORDENAR</span><select value={order} onChange={(event) => setOrder(event.target.value)}><option value="recent">Mais recentes</option><option value="oldest">Mais antigos</option></select></label>
+        <FilterSelect label="ORDENAR" value={order} onValueChange={setOrder} options={[{ value: "recent", label: "Mais recentes" }, { value: "oldest", label: "Mais antigos" }]} />
       </div>
       {error && <div className="inline-notice inline-error"><XCircle size={17} /> {error}</div>}
       {loading ? <div className="empty-state"><LoaderCircle className="spin" size={30} /><strong>Carregando histórico…</strong></div> : filtered.length === 0 ? <div className="empty-state"><History size={29} /><strong>Nenhum aviso encontrado</strong><p>Altere os filtros ou publique um novo aviso.</p></div> : <div className="history-list">{filtered.map((item) => <article key={item.id}><div className={`history-marker marker-${theme(item.criticality)}`} /><div className="history-main"><div className="history-title-row"><div><span>#{item.id}</span><h2>{item.title}</h2></div><span className={`state-badge ${item.active ? "state-active" : "state-inactive"}`}>{item.active ? "Ativo" : "Inativo"}</span></div><p>{item.message || "Sem mensagem informada."}</p><div className="history-meta"><span><CalendarDays size={14} /> Publicado: {formatDate(item.publishedDate)}</span>{item.expirationDate && <span><Clock3 size={14} /> Expira: {formatDate(item.expirationDate)}</span>}<span className="history-classification">{label(item.criticality)} · {priority(item.priority)}</span></div></div></article>)}</div>}

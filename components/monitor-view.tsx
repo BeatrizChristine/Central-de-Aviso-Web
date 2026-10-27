@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { FilterSelect } from "@/components/filter-select";
 
 type Visitor = {
   name: string;
@@ -149,27 +150,13 @@ export function MonitorView() {
           </div>
         </label>
         <div className="monitor-list-options">
-          <div className="list-limit-control" role="group" aria-label="Quantidade de dispositivos exibidos">
-            <span>Mostrar</span>
-            <div className="list-limit-buttons">
-              {[
-                ["10", "10"],
-                ["50", "50"],
-                ["100", "100"],
-                ["all", "Tudo"],
-              ].map(([value, label]) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={displayLimit === value ? "active" : ""}
-                  aria-pressed={displayLimit === value}
-                  onClick={() => setDisplayLimit(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FilterSelect
+            compact
+            label="Mostrar"
+            value={displayLimit}
+            options={[{ value: "10", label: "10" }, { value: "50", label: "50" }, { value: "100", label: "100" }, { value: "all", label: "Tudo" }]}
+            onValueChange={setDisplayLimit}
+          />
           <div className="monitor-results">
             <span>{identifiedMachines} máquinas identificadas</span>
             <span>Exibindo {displayedVisitors.length} de {filtered.length}</span>
