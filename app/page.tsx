@@ -239,7 +239,7 @@ function NoticeComposer(props: ComposerProps) {
             <label className="check-row"><input type="checkbox" checked={props.closable} onChange={(event) => props.setClosable(event.target.checked)} /><span><strong>Permitir fechar o aviso</strong><small>O colaborador poderá dispensar o popup.</small></span></label>
           </section>
           {props.feedback && <div className={`feedback feedback-${props.submitState}`} role="status">{props.submitState === "success" ? <CircleCheck size={18} /> : <Info size={18} />}{props.feedback}</div>}
-          <div className="form-actions"><button type="button" className="secondary-button"><Eye size={17} /> Visualizar</button><button type="submit" className="primary-button" disabled={props.submitState === "sending"}><Send size={17} /> {props.submitState === "sending" ? "Publicando..." : "Publicar aviso"}</button></div>
+          <div className="form-actions"><button type="submit" className="primary-button" disabled={props.submitState === "sending"}><Send size={17} /> {props.submitState === "sending" ? "Publicando..." : "Publicar aviso"}</button></div>
         </form>
 
         <aside className="preview-panel">

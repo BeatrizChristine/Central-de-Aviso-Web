@@ -346,7 +346,7 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
 .time-badge { display: inline-block; color: #315d9f; background: #edf4ff; border-radius: 15px; padding: 5px 8px; white-space: nowrap; font-weight: 700; }
 .online-badge { display: inline-flex; align-items: center; gap: 6px; color: #087854; background: #e7f8f0; border-radius: 15px; padding: 5px 8px; white-space: nowrap; font-weight: 750; }
 .online-badge i { width: 6px; height: 6px; border-radius: 50%; background: #16a36a; box-shadow: 0 0 0 3px #16a36a1c; }
-.settings-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; margin-bottom: 16px; }
+.settings-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
 .settings-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 4px 14px #173b7509; padding: 20px; }
 .settings-card-heading { display: flex; align-items: center; gap: 11px; padding-bottom: 16px; border-bottom: 1px solid #edf1f6; }
 .settings-card-heading > div strong, .settings-card-heading > div small { display: block; }
@@ -365,13 +365,6 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
 .connection-test-running { color: #315d9f; background: #edf4ff; border-color: #ccdcf8; }
 .connection-test-success { color: #087854; background: #e7f8f0; border-color: #bcebd8; }
 .connection-test-warning { color: #98600b; background: #fff7e5; border-color: #f0d590; }
-.security-row { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 17px; }
-.security-row > svg { color: #315d9f; }
-.security-row strong, .security-row small { display: block; }
-.security-row strong { color: #263955; font-size: 9px; }
-.security-row small { color: #7b8aa0; font-size: 7px; margin-top: 2px; }
-.settings-help { color: #718198; background: #f7f9fc; border-radius: 8px; font-size: 8px; line-height: 1.55; margin: 17px 0 0; padding: 10px; }
-.settings-help code { color: #2459c9; font-family: Consolas, monospace; }
 .endpoint-card { padding-bottom: 8px; }
 .endpoint-list > div { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 13px 2px; border-bottom: 1px solid #edf1f6; }
 .endpoint-list > div { transition: background .15s ease, padding .15s ease; }
@@ -439,6 +432,4 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
   .visitor-table-wrap { max-height: 460px; }
   .activity-chart-heading { align-items: flex-start; flex-direction: column; }
   .activity-chart { height: 190px; }
-  .security-row { grid-template-columns: auto 1fr; }
-  .security-row .state-badge { grid-column: 2; width: max-content; }
 }

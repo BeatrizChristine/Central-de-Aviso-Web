@@ -1,10 +1,10 @@
 "use client";
 
-import { Activity, CheckCircle2, KeyRound, LoaderCircle, RefreshCw, Server, Settings2, ShieldCheck, XCircle } from "lucide-react";
+import { Activity, CheckCircle2, LoaderCircle, RefreshCw, Server, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 type Endpoint = { key: string; path: string; online: boolean; status: number | null; latencyMs: number };
-type Diagnostics = { configured: boolean; server: string | null; tokenConfigured: boolean; checkedAt?: string; endpoints: Endpoint[] };
+type Diagnostics = { configured: boolean; server: string | null; checkedAt?: string; endpoints: Endpoint[] };
 type TestFeedback = { tone: "success" | "warning"; message: string };
 
 export function SettingsView() {
@@ -59,11 +59,6 @@ export function SettingsView() {
         <section className="settings-card connection-card">
           <div className="settings-card-heading"><span className="section-icon"><Server size={19} /></span><div><strong>Servidor da Intranet</strong><small>Configuração aplicada no ambiente web</small></div></div>
           {loading && !data ? <div className="settings-loading"><LoaderCircle className="spin" size={25} /> Verificando…</div> : <><div className="server-address"><span>ENDEREÇO CONFIGURADO</span><strong>{data?.server || "Não configurado"}</strong></div><div className={`connection-summary ${allOnline ? "summary-online" : "summary-offline"}`}>{allOnline ? <CheckCircle2 size={21} /> : <XCircle size={21} />}<div><strong>{allOnline ? "Todos os serviços estão online" : "Há serviços indisponíveis"}</strong><small>{data?.checkedAt ? `Última verificação: ${new Date(data.checkedAt).toLocaleString("pt-BR")}` : "Aguardando verificação"}</small></div></div></>}
-        </section>
-        <section className="settings-card">
-          <div className="settings-card-heading"><span className="section-icon"><ShieldCheck size={19} /></span><div><strong>Segurança</strong><small>Credenciais protegidas no servidor</small></div></div>
-          <div className="security-row"><KeyRound size={18} /><div><strong>Token da API</strong><small>{data?.tokenConfigured ? "Configurado no ambiente do servidor" : "Não configurado — o servidor aceita acesso pela rede interna"}</small></div><span className={`state-badge ${data?.tokenConfigured ? "state-active" : "state-inactive"}`}>{data?.tokenConfigured ? "Ativo" : "Opcional"}</span></div>
-          <p className="settings-help">O endereço e o token são definidos em <code>.env.local</code> durante o desenvolvimento e nas variáveis protegidas do servidor na publicação. Eles não são expostos ao navegador.</p>
         </section>
       </div>
       <section className="settings-card endpoint-card">
