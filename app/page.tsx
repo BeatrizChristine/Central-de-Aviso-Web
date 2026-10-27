@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  Activity, BellRing, CalendarClock, ChevronRight, CircleCheck, Eye,
-  FilePlus2, History, ImageIcon, Info, LogOut, Menu, PanelsTopLeft,
+  Activity, AlertTriangle, BellRing, CalendarClock, ChevronRight, CircleAlert, CircleCheck, Eye,
+  ExternalLink, FilePlus2, History, Info, LogOut, Menu, PanelsTopLeft,
   Send, Settings2, SunMedium, UploadCloud, Wifi, X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -197,13 +197,32 @@ function NoticeComposer(props: ComposerProps) {
           <div className="browser-preview">
             <div className="browser-bar"><i /><i /><i /><span>intranet.idam.am.gov.br</span></div>
             <div className="preview-background">
-              <div className={`notice-preview severity-${props.criticality}`}>
-                <div className="notice-brand"><BellRing size={15} /> Central de Avisos <X size={15} /></div>
-                <div className="notice-media"><ImageIcon size={25} /><small>Mídia do aviso</small></div>
-                <span className="notice-pill">{criticalityLabel(props.criticality)}</span>
-                <h2>{props.title || "Título do seu aviso"}</h2>
-                <p>{props.message || "A mensagem aparecerá aqui enquanto você preenche o formulário."}</p>
-                {props.link && <span className="notice-link">Acessar conteúdo <ChevronRight size={13} /></span>}
+              <div className={`intranet-popup-preview intranet-popup-preview-${props.criticality}`}>
+                <div className="intranet-popup-accent" />
+                <div className="intranet-popup-header">
+                  <div className="intranet-popup-heading-main">
+                    <span className="intranet-popup-brand-icon"><BellRing size={15} /></span>
+                    <div>
+                      <h2>{props.title || "Título do seu aviso"}</h2>
+                      <div className="intranet-popup-meta">
+                        <span className="intranet-popup-badge">{criticalityLabel(props.criticality)} - {priorityLabel(props.priority)}</span>
+                        <span className="intranet-popup-active"><CircleCheck size={11} /> Ativo</span>
+                      </div>
+                    </div>
+                  </div>
+                  {props.closable && <button type="button" aria-label="Fechar prévia"><X size={15} /></button>}
+                </div>
+                <div className="intranet-popup-body">
+                  <div className="intranet-popup-alert">
+                    <span className="intranet-popup-alert-icon">{previewAlertIcon(props.criticality)}</span>
+                    <div>
+                      <p>{props.message || "A mensagem aparecerá aqui enquanto você preenche o formulário."}</p>
+                      {props.link && <span className="intranet-popup-link">Saiba mais <ExternalLink size={12} /></span>}
+                    </div>
+                  </div>
+                  {props.expirationDate && <div className="intranet-popup-expiration"><CalendarClock size={13} /><span><small>EXPIRA</small><strong>{formatPreviewDate(props.expirationDate)}</strong></span></div>}
+                  <div className="intranet-popup-footer">{props.closable && <button type="button">Fechar</button>}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -215,7 +234,26 @@ function NoticeComposer(props: ComposerProps) {
 }
 
 function criticalityLabel(value: string) {
-  if (value === "critical") return "Crítico";
-  if (value === "attention") return "Atenção";
-  return "Informativo";
+  if (value === "critical") return "Crítica";
+  if (value === "attention") return "Moderada";
+  return "Informativa";
+}
+
+function priorityLabel(value: string) {
+  if (value === "high") return "Alta";
+  if (value === "low") return "Baixa";
+  return "Normal";
+}
+
+function previewAlertIcon(value: string) {
+  if (value === "critical") return <AlertTriangle size={16} />;
+  if (value === "attention") return <CircleAlert size={16} />;
+  return <Info size={16} />;
+}
+
+function formatPreviewDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }

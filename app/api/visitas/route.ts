@@ -10,21 +10,25 @@ export async function GET() {
     const body = await response.text();
     if (!response.ok) return new NextResponse(body, { status: response.status, headers: { "Content-Type": response.headers.get("content-type") || "application/json" } });
 
-    const payload = JSON.parse(body) as { visitantes?: Array<Record<string, unknown>> };
-    if (Array.isArray(payload.visitantes)) {
-      const pendingIps = [...new Set(payload.visitantes
-        .filter((visitor) => missingHostname(visitor.maquina))
-        .map((visitor) => typeof visitor.ip === "string" ? visitor.ip.trim() : "")
-        .filter(isPrivateIpv4))];
-      const hostnames = await resolveHostnames(pendingIps);
-      payload.visitantes = payload.visitantes.map((visitor) => {
-        const ip = typeof visitor.ip === "string" ? visitor.ip.trim() : "";
-        return hostnames[ip] ? { ...visitor, maquina: hostnames[ip] } : visitor;
-      });
-    }
-    return NextResponse.json(payload);
+    return new NextResponse(body, {
+      status: response.status,
+      headers: { "Content-Type": response.headers.get("content-type") || "application/json" },
+    });
   } catch {
     return NextResponse.json({ error: "Não foi possível consultar os acessos da Intranet." }, { status: 502 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json() as { ips?: unknown[] };
+    const ips = [...new Set((Array.isArray(body.ips) ? body.ips : [])
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => value.trim())
+      .filter(isPrivateIpv4))].slice(0, 256);
+    return NextResponse.json({ hostnames: await resolveHostnames(ips) });
+  } catch {
+    return NextResponse.json({ error: "Não foi possível identificar os nomes das máquinas." }, { status: 400 });
   }
 }
 
@@ -45,12 +49,6 @@ async function resolveHostnames(ips: string[]) {
   } catch {
     return {} as Record<string, string>;
   }
-}
-
-function missingHostname(value: unknown) {
-  if (typeof value !== "string" || !value.trim()) return true;
-  const normalized = value.trim().toLocaleLowerCase("pt-BR");
-  return normalized === "null" || normalized.includes("não informado") || normalized.includes("nao informado");
 }
 
 function isPrivateIpv4(value: string) {

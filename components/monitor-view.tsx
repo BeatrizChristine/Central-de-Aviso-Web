@@ -13,7 +13,7 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FilterSelect } from "@/components/filter-select";
 
 type Visitor = {
@@ -54,8 +54,39 @@ export function MonitorView() {
   const [query, setQuery] = useState("");
   const [displayLimit, setDisplayLimit] = useState("10");
   const [loading, setLoading] = useState(true);
+  const [resolvingMachines, setResolvingMachines] = useState(false);
   const [error, setError] = useState("");
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const hostnameCache = useRef<Record<string, string>>({});
+  const pendingIps = useRef(new Set<string>());
+
+  const resolveMachines = useCallback(async (visitors: Visitor[]) => {
+    const ips = [...new Set(visitors
+      .filter((visitor) => visitor.machine === "Não informado" && isPrivateIpv4(visitor.ip) && !pendingIps.current.has(visitor.ip))
+      .map((visitor) => visitor.ip))];
+    if (ips.length === 0) return;
+
+    ips.forEach((ip) => pendingIps.current.add(ip));
+    setResolvingMachines(true);
+    try {
+      const response = await fetch("/api/visitas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ips }),
+      });
+      if (!response.ok) return;
+      const payload = await response.json() as { hostnames?: Record<string, string> };
+      const hostnames = payload.hostnames || {};
+      hostnameCache.current = { ...hostnameCache.current, ...hostnames };
+      setPresence((current) => ({
+        ...current,
+        visitors: current.visitors.map((visitor) => hostnames[visitor.ip] ? { ...visitor, machine: hostnames[visitor.ip] } : visitor),
+      }));
+    } finally {
+      ips.forEach((ip) => pendingIps.current.delete(ip));
+      setResolvingMachines(pendingIps.current.size > 0);
+    }
+  }, []);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -67,7 +98,9 @@ export function MonitorView() {
       if (!response.ok) throw new Error(apiError(payload, "Não foi possível consultar os acessos."));
 
       const visitors = Array.isArray(payload?.visitantes)
-        ? payload.visitantes.map(normalizeVisitor)
+        ? payload.visitantes.map(normalizeVisitor).map((visitor: Visitor) => hostnameCache.current[visitor.ip]
+          ? { ...visitor, machine: hostnameCache.current[visitor.ip] }
+          : visitor)
         : [];
       const onlineNow = number(payload?.onlineAgora);
       const now = Date.now();
@@ -81,12 +114,13 @@ export function MonitorView() {
       });
       setSamples((current) => storeSample(current, { timestamp: now, online: onlineNow }));
       setUpdatedAt(new Date(now));
+      void resolveMachines(visitors);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Falha ao consultar os acessos.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [resolveMachines]);
 
   useEffect(() => {
     void load();
@@ -158,7 +192,7 @@ export function MonitorView() {
             onValueChange={setDisplayLimit}
           />
           <div className="monitor-results">
-            <span>{identifiedMachines} máquinas identificadas</span>
+            <span>{resolvingMachines ? "Identificando máquinas…" : `${identifiedMachines} máquinas identificadas`}</span>
             <span>Exibindo {displayedVisitors.length} de {filtered.length}</span>
           </div>
         </div>
@@ -362,4 +396,11 @@ function number(input: unknown) {
 
 function apiError(payload: unknown, fallback: string) {
   return payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : fallback;
+}
+
+function isPrivateIpv4(value: string) {
+  const parts = value.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return false;
+  const [first, second] = parts.map(Number);
+  return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
 }
