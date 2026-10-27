@@ -11,6 +11,7 @@ import { DailyMessageView } from "@/components/daily-message-view";
 import { FilterSelect } from "@/components/filter-select";
 import { HistoryView } from "@/components/history-view";
 import { IntranetNoticeCard } from "@/components/intranet-notice-card";
+import { LoginView } from "@/components/login-view";
 import { MonitorView } from "@/components/monitor-view";
 import { PopupsView } from "@/components/popups-view";
 import { SettingsView } from "@/components/settings-view";
@@ -29,6 +30,7 @@ type SubmitState = "idle" | "sending" | "success" | "error";
 type SelectedAttachment = { name: string; mimeType: string; base64: string; previewUrl: string; size: number };
 
 export default function Home() {
+  const [authenticated, setAuthenticated] = useState(false);
   const [active, setActive] = useState("Novo aviso");
   const [menuOpen, setMenuOpen] = useState(false);
   const [apiState, setApiState] = useState<ApiState>("checking");
@@ -45,13 +47,24 @@ export default function Home() {
   const [attachment, setAttachment] = useState<SelectedAttachment | null>(null);
 
   useEffect(() => {
+    const restoreSession = window.setTimeout(() => {
+      const remembered = window.localStorage.getItem("central-idam-auth") === "active";
+      const session = window.sessionStorage.getItem("central-idam-auth") === "active";
+      setAuthenticated(remembered || session);
+    }, 0);
+
+    return () => window.clearTimeout(restoreSession);
+  }, []);
+
+  useEffect(() => {
+    if (!authenticated) return;
     fetch("/api/status")
       .then(async (response) => {
         const status = (await response.json()) as { configured?: boolean; online?: boolean };
         setApiState(!status.configured ? "unconfigured" : status.online ? "online" : "offline");
       })
       .catch(() => setApiState("offline"));
-  }, []);
+  }, [authenticated]);
 
   const apiLabel = useMemo(() => {
     if (apiState === "checking") return "Verificando servidor";
@@ -62,6 +75,21 @@ export default function Home() {
 
   function selectPage(label: string) {
     setActive(label);
+    setMenuOpen(false);
+  }
+
+  function login(remember: boolean) {
+    const storage = remember ? window.localStorage : window.sessionStorage;
+    const otherStorage = remember ? window.sessionStorage : window.localStorage;
+    storage.setItem("central-idam-auth", "active");
+    otherStorage.removeItem("central-idam-auth");
+    setAuthenticated(true);
+  }
+
+  function logout() {
+    window.localStorage.removeItem("central-idam-auth");
+    window.sessionStorage.removeItem("central-idam-auth");
+    setAuthenticated(false);
     setMenuOpen(false);
   }
 
@@ -91,6 +119,8 @@ export default function Home() {
     }
   }
 
+  if (!authenticated) return <LoginView onLogin={login} />;
+
   return (
     <main className="app-shell">
       <button className="mobile-menu-button" type="button" aria-label={menuOpen ? "Fechar menu" : "Abrir menu"} onClick={() => setMenuOpen((value) => !value)}>
@@ -118,7 +148,7 @@ export default function Home() {
           </nav>
         ))}
         <div className="sidebar-footer">
-          <button type="button" className="nav-item"><LogOut size={18} /><span>Sair</span></button>
+          <button type="button" className="nav-item" onClick={logout}><LogOut size={18} /><span>Sair</span></button>
           <div className={`server-status status-${apiState}`}><span className="status-dot" /><span>{apiLabel}</span></div>
         </div>
       </aside>
