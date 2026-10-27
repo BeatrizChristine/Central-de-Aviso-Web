@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/auth";
+import { isPrivateIpv4 } from "@/lib/network.mjs";
+import { createIntranetHeaders, getIntranetBaseUrl } from "@/lib/server/intranet";
 
 export async function GET(request: Request) {
   const unauthorized = await requireApiSession(request);
   if (unauthorized) return unauthorized;
 
-  const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
+  const baseUrl = getIntranetBaseUrl();
   if (!baseUrl) return NextResponse.json({ error: "Configure INTRANET_BASE_URL no arquivo .env.local." }, { status: 503 });
-  const headers = new Headers({ Accept: "application/json" });
-  if (process.env.INTRANET_AVISOS_TOKEN) headers.set("x-intranet-token", process.env.INTRANET_AVISOS_TOKEN);
   try {
-    const response = await fetch(`${baseUrl}/api/visitas`, { headers, cache: "no-store", signal: AbortSignal.timeout(8000) });
+    const response = await fetch(`${baseUrl}/api/visitas`, {
+      headers: createIntranetHeaders(),
+      cache: "no-store",
+      signal: AbortSignal.timeout(8_000),
+    });
     const body = await response.text();
     if (!response.ok) return new NextResponse(body, { status: response.status, headers: { "Content-Type": response.headers.get("content-type") || "application/json" } });
 
@@ -22,7 +26,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Não foi possível consultar os acessos da Intranet." }, { status: 502 });
   }
 }
-
 export async function POST(request: Request) {
   const unauthorized = await requireApiSession(request);
   if (unauthorized) return unauthorized;
@@ -56,11 +59,4 @@ async function resolveHostnames(ips: string[]) {
   } catch {
     return {} as Record<string, string>;
   }
-}
-
-function isPrivateIpv4(value: string) {
-  const parts = value.split(".");
-  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part) || Number(part) > 255)) return false;
-  const [first, second] = parts.map(Number);
-  return first === 10 || (first === 172 && second >= 16 && second <= 31) || (first === 192 && second === 168);
 }

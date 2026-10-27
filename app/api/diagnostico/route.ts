@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireApiSession } from "@/lib/auth";
+import { createIntranetHeaders, getIntranetBaseUrl } from "@/lib/server/intranet";
 
 const paths = [
   { key: "avisos", path: "/api/avisos" },
@@ -11,10 +12,9 @@ export async function GET(request: Request) {
   const unauthorized = await requireApiSession(request);
   if (unauthorized) return unauthorized;
 
-  const baseUrl = process.env.INTRANET_BASE_URL?.trim().replace(/\/+$/, "");
+  const baseUrl = getIntranetBaseUrl();
   if (!baseUrl) return NextResponse.json({ configured: false, server: null, tokenConfigured: false, endpoints: [] });
-  const headers = new Headers({ Accept: "application/json" });
-  if (process.env.INTRANET_AVISOS_TOKEN) headers.set("x-intranet-token", process.env.INTRANET_AVISOS_TOKEN);
+  const headers = createIntranetHeaders();
 
   const endpoints = await Promise.all(paths.map(async ({ key, path }) => {
     const startedAt = Date.now();

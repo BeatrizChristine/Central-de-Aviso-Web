@@ -13,26 +13,11 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { IntranetNoticeCard } from "@/components/intranet-notice-card";
 import { StatusFilter } from "@/components/status-filter";
-
-type PopupRecord = {
-  id: string;
-  title: string;
-  message: string;
-  active: boolean;
-  criticality: string;
-  priority: string;
-  link?: string;
-  imageUrl?: string;
-  imageMimeType?: string;
-  publishedDate?: string;
-  expirationDate?: string;
-  closable?: boolean;
-};
-
-type RawPopup = Record<string, unknown>;
+import { apiError, arrayPayload, isJsonRecord, readJson } from "@/lib/client/api";
+import { normalizeNotice, type NoticeRecord } from "@/types/notice";
 
 export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
-  const [items, setItems] = useState<PopupRecord[]>([]);
+  const [items, setItems] = useState<NoticeRecord[]>([]);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -44,16 +29,11 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
     setFeedback("");
     try {
       const response = await fetch("/api/avisos", { cache: "no-store" });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(errorMessage(payload, "Não foi possível carregar os popups."));
-      const source = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.avisos)
-          ? payload.avisos
-          : Array.isArray(payload?.popups)
-            ? payload.popups
-            : [];
-      setItems(source.map(normalizePopup));
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(apiError(payload, "Não foi possível carregar os popups."));
+      setItems(arrayPayload(payload, ["avisos", "popups"])
+        .filter(isJsonRecord)
+        .map(normalizeNotice));
     } catch (error) {
       setItems([]);
       setFeedback(error instanceof Error ? error.message : "Falha ao carregar os popups.");
@@ -62,7 +42,10 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
@@ -73,7 +56,7 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
     });
   }, [items, query, status]);
 
-  async function toggle(item: PopupRecord) {
+  async function toggle(item: NoticeRecord) {
     setActionId(item.id);
     setFeedback("");
     try {
@@ -82,8 +65,8 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active: !item.active }),
       });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(errorMessage(payload, "Não foi possível alterar o popup."));
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(apiError(payload, "Não foi possível alterar o popup."));
       setItems((current) => current.map((record) => record.id === item.id ? { ...record, active: !record.active } : record));
       setFeedback(item.active ? "Popup desativado." : "Popup ativado.");
     } catch (error) {
@@ -93,14 +76,14 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
     }
   }
 
-  async function remove(item: PopupRecord) {
+  async function remove(item: NoticeRecord) {
     if (!window.confirm(`Excluir definitivamente o popup “${item.title}”?`)) return;
     setActionId(item.id);
     setFeedback("");
     try {
       const response = await fetch(`/api/avisos?id=${encodeURIComponent(item.id)}`, { method: "DELETE" });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(errorMessage(payload, "Não foi possível excluir o popup."));
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(apiError(payload, "Não foi possível excluir o popup."));
       setItems((current) => current.filter((record) => record.id !== item.id));
       setFeedback("Popup excluído.");
     } catch (error) {
@@ -143,23 +126,3 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
     </div>
   );
 }
-
-function normalizePopup(raw: RawPopup, index: number): PopupRecord {
-  return {
-    id: String(raw.id ?? raw._id ?? index),
-    title: String(raw.title ?? raw.titulo ?? "Sem título"),
-    message: String(raw.message ?? raw.mensagem ?? ""),
-    active: Boolean(raw.active ?? raw.ativo ?? true),
-    criticality: String(raw.criticality ?? raw.criticidade ?? "informative"),
-    priority: String(raw.priority ?? raw.prioridade ?? "normal"),
-    link: optionalText(raw.link),
-    imageUrl: optionalText(raw.imageUrl ?? raw.imagem ?? raw.imageData),
-    imageMimeType: optionalText(raw.imageMimeType ?? raw.mimeType),
-    publishedDate: optionalText(raw.publishedDate ?? raw.dataPublicacao ?? raw.createdAt),
-    expirationDate: optionalText(raw.expirationDate ?? raw.dataExpiracao),
-    closable: Boolean(raw.closable ?? raw.podeFechar ?? true),
-  };
-}
-
-function optionalText(value: unknown) { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
-function errorMessage(payload: unknown, fallback: string) { return payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : fallback; }

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { FilterSelect } from "@/components/filter-select";
+import { apiError, arrayPayload, readJson } from "@/lib/client/api";
 
 type ListedMessage = {
   message: string;
@@ -38,9 +39,9 @@ export function DailyMessageView() {
     if (clearFeedback) setFeedback("");
     try {
       const response = await fetch("/api/mensagens", { cache: "no-store" });
-      const payload = await response.json().catch(() => null);
+      const payload = await readJson(response);
       if (!response.ok) throw new Error(apiError(payload, "Não foi possível carregar as mensagens."));
-      const list = Array.isArray(payload) ? payload : Array.isArray(payload?.messages) ? payload.messages : [];
+      const list = arrayPayload(payload, ["messages"]);
       setMessages(list.filter((item: unknown): item is string => typeof item === "string").reverse());
     } catch (error) {
       setMessages([]);
@@ -50,7 +51,10 @@ export function DailyMessageView() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [load]);
 
   const filteredMessages = useMemo<ListedMessage[]>(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
@@ -64,10 +68,6 @@ export function DailyMessageView() {
   const firstResult = (currentPage - 1) * pageSize;
   const visibleMessages = filteredMessages.slice(firstResult, firstResult + pageSize);
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages);
-  }, [page, totalPages]);
-
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const message = content.trim();
@@ -80,7 +80,7 @@ export function DailyMessageView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(original ? { oldMessage: original, message } : { message }),
       });
-      const payload = await response.json().catch(() => null);
+      const payload = await readJson(response);
       if (!response.ok) throw new Error(apiError(payload, "Não foi possível salvar a mensagem."));
       setContent("");
       setOriginal(null);
@@ -104,7 +104,7 @@ export function DailyMessageView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
       });
-      const payload = await response.json().catch(() => null);
+      const payload = await readJson(response);
       if (!response.ok) throw new Error(apiError(payload, "Não foi possível excluir a mensagem."));
       if (original === message) cancelEdit();
       setFeedback("Mensagem excluída.");
@@ -240,9 +240,9 @@ export function DailyMessageView() {
               <div className="daily-pagination">
                 <span>Exibindo {firstResult + 1}–{resultEnd} de {filteredMessages.length}</span>
                 <div>
-                  <button type="button" aria-label="Página anterior" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1}><ChevronLeft size={16} /></button>
+                  <button type="button" aria-label="Página anterior" onClick={() => setPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}><ChevronLeft size={16} /></button>
                   <strong>Página {currentPage} de {totalPages}</strong>
-                  <button type="button" aria-label="Próxima página" onClick={() => setPage((value) => Math.min(totalPages, value + 1))} disabled={currentPage === totalPages}><ChevronRight size={16} /></button>
+                  <button type="button" aria-label="Próxima página" onClick={() => setPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages}><ChevronRight size={16} /></button>
                 </div>
               </div>
             </div>
@@ -251,8 +251,4 @@ export function DailyMessageView() {
       </div>
     </div>
   );
-}
-
-function apiError(payload: unknown, fallback: string) {
-  return payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : fallback;
 }

@@ -2,22 +2,10 @@
 
 import { AlertTriangle, BellRing, CalendarClock, CircleAlert, CircleCheck, ExternalLink, FileText, Info, X } from "lucide-react";
 import { ReactNode, useMemo, useState } from "react";
+import type { NoticeRecord } from "@/types/notice";
 
-export type IntranetNoticeData = {
-  id?: string;
-  title: string;
-  message: string;
-  active?: boolean;
-  criticality: string;
-  priority: string;
-  link?: string;
-  imageUrl?: string;
-  imageMimeType?: string;
-  imageName?: string;
-  publishedDate?: string;
-  expirationDate?: string;
-  closable?: boolean;
-};
+export type IntranetNoticeData = Omit<NoticeRecord, "id" | "active"> &
+  Partial<Pick<NoticeRecord, "id" | "active">>;
 
 type IntranetNoticeCardProps = {
   notice: IntranetNoticeData;
@@ -78,6 +66,8 @@ function NoticeAttachment({ notice, showFileName }: { notice: IntranetNoticeData
   if (mime.startsWith("image/") || isImageSource(source)) {
     return (
       <figure className="notice-attachment-preview">
+        {/* A origem pode ser blob/data ou um anexo privado da Intranet, que não deve passar pelo otimizador externo. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={source} alt={notice.imageName || notice.title || "Imagem do aviso"} onError={() => setFailed(true)} />
         {showFileName && notice.imageName && <figcaption>{notice.imageName}</figcaption>}
       </figure>

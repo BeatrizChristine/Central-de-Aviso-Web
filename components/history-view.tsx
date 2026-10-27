@@ -5,24 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StatusFilter } from "@/components/status-filter";
 import { FilterSelect } from "@/components/filter-select";
 import { IntranetNoticeCard } from "@/components/intranet-notice-card";
-
-type HistoryItem = {
-  id: string;
-  title: string;
-  message: string;
-  active: boolean;
-  criticality: string;
-  priority: string;
-  link?: string;
-  imageUrl?: string;
-  imageMimeType?: string;
-  publishedDate?: string;
-  expirationDate?: string;
-  closable?: boolean;
-};
+import { apiError, arrayPayload, isJsonRecord, readJson } from "@/lib/client/api";
+import { normalizeNotice, type NoticeRecord } from "@/types/notice";
 
 export function HistoryView() {
-  const [items, setItems] = useState<HistoryItem[]>([]);
+  const [items, setItems] = useState<NoticeRecord[]>([]);
   const [query, setQuery] = useState("");
   const [state, setState] = useState("all");
   const [order, setOrder] = useState("recent");
@@ -33,28 +20,19 @@ export function HistoryView() {
     setLoading(true); setError("");
     try {
       const response = await fetch("/api/avisos", { cache: "no-store" });
-      const payload = await response.json().catch(() => null);
+      const payload = await readJson(response);
       if (!response.ok) throw new Error(apiError(payload, "Não foi possível carregar o histórico."));
-      const source = Array.isArray(payload) ? payload : Array.isArray(payload?.avisos) ? payload.avisos : Array.isArray(payload?.popups) ? payload.popups : [];
-      setItems(source.map((raw: Record<string, unknown>, index: number) => ({
-        id: String(raw.id ?? raw._id ?? index),
-        title: String(raw.title ?? raw.titulo ?? "Sem título"),
-        message: String(raw.message ?? raw.mensagem ?? ""),
-        active: Boolean(raw.active ?? raw.ativo ?? true),
-        criticality: String(raw.criticality ?? raw.criticidade ?? "informative"),
-        priority: String(raw.priority ?? raw.prioridade ?? "normal"),
-        link: text(raw.link),
-        imageUrl: text(raw.imageUrl ?? raw.imagem ?? raw.imageData),
-        imageMimeType: text(raw.imageMimeType ?? raw.mimeType),
-        publishedDate: text(raw.publishedDate ?? raw.dataPublicacao ?? raw.createdAt),
-        expirationDate: text(raw.expirationDate ?? raw.dataExpiracao),
-        closable: Boolean(raw.closable ?? raw.podeFechar ?? true),
-      })));
+      setItems(arrayPayload(payload, ["avisos", "popups"])
+        .filter(isJsonRecord)
+        .map(normalizeNotice));
     } catch (reason) { setItems([]); setError(reason instanceof Error ? reason.message : "Falha ao carregar o histórico."); }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const initialLoad = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(initialLoad);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase("pt-BR");
@@ -80,6 +58,4 @@ export function HistoryView() {
 }
 
 function Stat({ icon, value, label }: { icon: React.ReactNode; value: number; label: string }) { return <div><span>{icon}</span><p><strong>{value}</strong><small>{label}</small></p></div>; }
-function text(value: unknown) { return typeof value === "string" && value.trim() ? value.trim() : undefined; }
-function apiError(payload: unknown, fallback: string) { return payload && typeof payload === "object" && "error" in payload && typeof payload.error === "string" ? payload.error : fallback; }
 function dateValue(value?: string) { if (!value) return 0; const parsed = new Date(value).getTime(); return Number.isNaN(parsed) ? 0 : parsed; }

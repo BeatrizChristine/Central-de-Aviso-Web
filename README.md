@@ -1,23 +1,21 @@
 # Central de Avisos Web
 
-Versão web da Central de Avisos, construída com TypeScript, React e Next.js. A aplicação JavaFX original continua na raiz do repositório e pode ser executada normalmente durante a migração.
+Painel interno para publicar avisos, gerenciar popups e mensagens da Intranet e acompanhar os dispositivos conectados. A aplicação usa React, TypeScript, Vinext e autenticação no Active Directory.
+
+## Requisitos
+
+- Node.js 22.13 ou superior.
+- Acesso à rede interna para consultar a Intranet e o Active Directory.
+- Um arquivo `.env.local` criado a partir do `.env.example`.
 
 ## Configuração local
 
-1. Copie `.env.example` para `.env.local`.
-2. Informe em `INTRANET_BASE_URL` o endereço do servidor da Intranet.
-3. Se necessário, informe `INTRANET_AVISOS_TOKEN`.
-
-## Login com Active Directory
-
-O login valida as credenciais diretamente no Active Directory do IDAM. A senha é usada somente
-durante o bind LDAP e não é armazenada. Depois da validação, a Central cria uma sessão assinada em
-cookie `HttpOnly`; as rotas de avisos, mensagens, anexos, visitas e diagnóstico recusam chamadas sem
-uma sessão válida.
-
-Configure no `.env.local`:
+Copie `.env.example` para `.env.local` e informe os valores reais somente no arquivo local:
 
 ```dotenv
+INTRANET_BASE_URL=https://intranet.exemplo.gov.br
+INTRANET_AVISOS_TOKEN=
+
 CENTRAL_AD_URL=ldaps://dc01.exemplo.local:636
 CENTRAL_AD_DOMAIN=exemplo.local
 CENTRAL_AD_BASE_DN=DC=exemplo,DC=local
@@ -26,51 +24,66 @@ CENTRAL_AD_ALLOW_INSECURE_LDAP=false
 CENTRAL_AUTH_SECRET=gere-um-segredo-aleatorio-com-pelo-menos-32-caracteres
 ```
 
-Mantenha os endereços, nomes de domínio, grupos e segredos reais exclusivamente no `.env.local`.
-Para produção, use LDAPS com certificado válido e mantenha
-`CENTRAL_AD_ALLOW_INSECURE_LDAP=false`.
+Não coloque endereços internos, domínio real, grupos, tokens ou senhas no `.env.example`. O `.env.local` é ignorado pelo Git.
 
-O servidor da Intranet só fica acessível quando o computador está conectado à rede interna. Para desenvolvimento com um servidor executado no próprio computador, use `http://localhost:3000`.
+Para produção, use LDAPS com certificado válido e mantenha `CENTRAL_AD_ALLOW_INSECURE_LDAP=false`.
 
 ## Executar
 
-No PowerShell, dentro da pasta `web`:
+No PowerShell, na raiz do repositório:
 
 ```powershell
+npm.cmd install
 npm.cmd run dev
 ```
 
-Acesse o endereço exibido no terminal, normalmente `http://localhost:5173`.
-
-O comando `npm.cmd run dev` também inicia, em `127.0.0.1:5190`, um resolvedor local de nomes de máquinas. Ele recebe somente IPs privados devolvidos pela API, consulta o nome pelo Windows e mantém os resultados em cache. Por isso, a tela **Acessando agora** mostra o hostname e o IP quando o notebook está conectado à rede interna.
-
-Para usar outra porta e manter a resolução de nomes ativa, use, por exemplo:
+O endereço padrão é `http://localhost:5173`. Para usar outra porta:
 
 ```powershell
 npm.cmd run dev:web -- --port 5174
 ```
 
-Se quiser iniciar apenas a interface, sem o serviço de resolução de nomes, use:
+O comando `dev` também inicia em `127.0.0.1:5190` o resolvedor local de nomes das máquinas. Para iniciar somente a interface:
 
 ```powershell
 npm.cmd run dev:interface -- --port 5174
 ```
 
-## Compilar
+## Verificações
 
 ```powershell
+npm.cmd run lint
+npm.cmd run typecheck
+npm.cmd test
 npm.cmd run build
 ```
 
-O token da Intranet é utilizado apenas pelas rotas de servidor em `app/api`. Ele não deve ser colocado em componentes do navegador.
+Para executar todas em sequência:
 
-## Estado da migração
+```powershell
+npm.cmd run check
+```
 
-- Novo aviso: formulário, pré-visualização e publicação pela API.
-- Popups: listagem, pesquisa, ativação, desativação e exclusão.
-- Mensagem do dia: listagem, criação, edição e exclusão.
-- Histórico: consulta, pesquisa, filtros, ordenação e indicadores.
-- Monitor de acessos: gráfico de atividade, dispositivos online, IP, última atividade, tempo conectado, status e navegador, com atualização automática.
-- Configurações: diagnóstico do servidor, segurança e endpoints integrados.
+Essas mesmas verificações são executadas pelo GitHub Actions em pushes para a branch `main` e em pull requests.
 
-As funcionalidades conectadas exibem uma mensagem amigável enquanto `INTRANET_BASE_URL` estiver indisponível.
+## Estrutura principal
+
+```text
+app/                 páginas e rotas HTTP
+components/          componentes compartilhados da interface
+features/notices/    criação e pré-visualização de avisos
+features/monitor/    gráfico, tipos e utilitários do monitor
+lib/auth/            configuração, Active Directory e sessão
+lib/client/          tratamento compartilhado das respostas HTTP
+lib/server/          integração de servidor com a Intranet
+types/               contratos compartilhados
+tests/               testes unitários
+```
+
+## Segurança
+
+- A senha do usuário é utilizada apenas durante o bind LDAP e não é armazenada.
+- A sessão é assinada com HMAC e enviada em cookie `HttpOnly`.
+- As rotas da Intranet exigem uma sessão válida.
+- O token da Intranet é utilizado somente nas rotas de servidor.
+- A resolução de hostnames aceita somente endereços IPv4 privados.

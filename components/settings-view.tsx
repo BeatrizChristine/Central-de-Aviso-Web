@@ -2,6 +2,7 @@
 
 import { Activity, CheckCircle2, LoaderCircle, RefreshCw, Server, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { apiError, arrayPayload, isJsonRecord, readJson } from "@/lib/client/api";
 
 type Endpoint = { key: string; path: string; online: boolean; status: number | null; latencyMs: number };
 type Diagnostics = { configured: boolean; server: string | null; checkedAt?: string; endpoints: Endpoint[] };
@@ -23,14 +24,16 @@ export function SettingsView() {
     }
     try {
       const response = await fetch(`/api/diagnostico?check=${Date.now()}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error || "Não foi possível verificar a configuração.");
-      setData(payload);
+      const payload = await readJson(response);
+      if (!response.ok) throw new Error(apiError(payload, "Não foi possível verificar a configuração."));
+      const diagnostics = parseDiagnostics(payload);
+      if (!diagnostics) throw new Error("O servidor retornou um diagnóstico inválido.");
+      setData(diagnostics);
       if (manual) {
-        const endpoints = Array.isArray(payload?.endpoints) ? payload.endpoints : [];
+        const endpoints = diagnostics.endpoints;
         const onlineCount = endpoints.filter((endpoint: Endpoint) => endpoint.online).length;
         const allResponded = endpoints.length > 0 && onlineCount === endpoints.length;
-        const checkedTime = payload?.checkedAt ? new Date(payload.checkedAt).toLocaleTimeString("pt-BR") : new Date().toLocaleTimeString("pt-BR");
+        const checkedTime = diagnostics.checkedAt ? new Date(diagnostics.checkedAt).toLocaleTimeString("pt-BR") : new Date().toLocaleTimeString("pt-BR");
         setFeedback({
           tone: allResponded ? "success" : "warning",
           message: allResponded
@@ -46,7 +49,10 @@ export function SettingsView() {
     }
   }, []);
 
-  useEffect(() => { void check(); }, [check]);
+  useEffect(() => {
+    const initialCheck = window.setTimeout(() => void check(), 0);
+    return () => window.clearTimeout(initialCheck);
+  }, [check]);
   const allOnline = Boolean(data?.endpoints.length && data.endpoints.every((endpoint) => endpoint.online));
 
   return (
@@ -70,3 +76,22 @@ export function SettingsView() {
 }
 
 function endpointName(key: string) { if (key === "avisos") return "Avisos e popups"; if (key === "mensagens") return "Mensagem do dia"; if (key === "visitas") return "Monitor de acessos"; return key; }
+
+function parseDiagnostics(payload: unknown): Diagnostics | null {
+  if (!isJsonRecord(payload)) return null;
+  const endpoints = arrayPayload(payload, ["endpoints"])
+    .filter(isJsonRecord)
+    .map((endpoint): Endpoint => ({
+      key: String(endpoint.key ?? ""),
+      path: String(endpoint.path ?? ""),
+      online: Boolean(endpoint.online),
+      status: typeof endpoint.status === "number" ? endpoint.status : null,
+      latencyMs: typeof endpoint.latencyMs === "number" ? endpoint.latencyMs : 0,
+    }));
+  return {
+    configured: Boolean(payload.configured),
+    server: typeof payload.server === "string" ? payload.server : null,
+    checkedAt: typeof payload.checkedAt === "string" ? payload.checkedAt : undefined,
+    endpoints,
+  };
+}

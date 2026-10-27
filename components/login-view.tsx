@@ -18,16 +18,10 @@ import {
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import type { AuthUser } from "@/types/auth";
 
 type LoginViewProps = {
   onLogin: (user: AuthUser) => void;
-};
-
-export type AuthUser = {
-  id: string;
-  username: string;
-  name: string;
-  email: string | null;
 };
 
 const benefits = [
