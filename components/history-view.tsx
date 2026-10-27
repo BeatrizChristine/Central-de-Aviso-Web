@@ -2,6 +2,7 @@
 
 import { CalendarDays, CheckCircle2, Clock3, History, LoaderCircle, RefreshCw, Search, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { StatusFilter } from "@/components/status-filter";
 
 type HistoryItem = {
   id: string;
@@ -59,7 +60,7 @@ export function HistoryView() {
       <div className="history-stats"><Stat icon={<History size={18} />} value={items.length} label="Total registrado" /><Stat icon={<CheckCircle2 size={18} />} value={activeCount} label="Avisos ativos" /><Stat icon={<XCircle size={18} />} value={items.length - activeCount} label="Avisos inativos" /></div>
       <div className="filter-card history-filters">
         <label className="search-control"><span>BUSCAR</span><div><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Título ou conteúdo" /></div></label>
-        <label><span>STATUS</span><select value={state} onChange={(event) => setState(event.target.value)}><option value="all">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label>
+        <StatusFilter value={state} onChange={setState} />
         <label><span>ORDENAR</span><select value={order} onChange={(event) => setOrder(event.target.value)}><option value="recent">Mais recentes</option><option value="oldest">Mais antigos</option></select></label>
       </div>
       {error && <div className="inline-notice inline-error"><XCircle size={17} /> {error}</div>}

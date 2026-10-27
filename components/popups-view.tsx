@@ -14,6 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { StatusFilter } from "@/components/status-filter";
 
 type PopupRecord = {
   id: string;
@@ -118,7 +119,7 @@ export function PopupsView({ onCreateNotice }: { onCreateNotice: () => void }) {
 
       <div className="filter-card">
         <label className="search-control"><span>BUSCAR</span><div><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Título ou mensagem" /></div></label>
-        <label><span>STATUS</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">Todos</option><option value="active">Ativos</option><option value="inactive">Inativos</option></select></label>
+        <StatusFilter value={status} onChange={setStatus} />
         <div className="result-count"><strong>{filtered.length}</strong><span>{filtered.length === 1 ? "popup encontrado" : "popups encontrados"}</span></div>
       </div>
 
