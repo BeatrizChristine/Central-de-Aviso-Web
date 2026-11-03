@@ -82,6 +82,19 @@ Cada execução usa uma cópia imutável do build em `.wrangler/builds/<BUILD_ID
 Assim, compilar a próxima versão não remove os CSS e JavaScript da versão que
 continua atendendo na porta 3001.
 
+Só reinicie depois que o build terminar: enquanto ele roda, `dist/` fica incompleto e
+a Central não consegue iniciar.
+
+## Backup
+
+No servidor, `scripts/backup.sh` roda todo dia às 02:30 pelo crontab do usuário `intranet`
+e guarda 14 dias de cópias em `~/backups/central-e-intranet`. Cada arquivo contém os dados
+e anexos da Intranet, a auditoria da Central e os dois `.env.local`.
+
+Para restaurar, extraia o arquivo com `tar -xzf`, pare a aplicação e devolva os arquivos
+a `frontend/data`, `frontend/public/uploads` e `.wrangler/state/v3/d1`. Guarde uma cópia
+fora deste servidor, porque essas cópias não protegem contra a perda do disco.
+
 ## Verificações
 
 ```powershell
