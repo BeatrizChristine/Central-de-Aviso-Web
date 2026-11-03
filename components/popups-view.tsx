@@ -73,7 +73,7 @@ export function PopupsView({ currentUser, onCreateNotice }: { currentUser: AuthU
   }
 
   async function remove(item: NoticeRecord) {
-    if (!window.confirm(`Excluir definitivamente o popup “${item.title}”?`)) return;
+    if (!window.confirm(`Excluir definitivamente o popup “${item.title || "Aviso"}”?`)) return;
     setActionId(item.id);
     setFeedback("");
     try {

@@ -16,6 +16,7 @@ import { DateTimeField } from "@/components/date-time-field";
 import { FilterSelect } from "@/components/filter-select";
 import { IntranetNoticeCard } from "@/components/intranet-notice-card";
 import { apiError, readJson } from "@/lib/client/api";
+import { withLocalOffset } from "@/lib/notice-date.mjs";
 
 type SubmitState = "idle" | "sending" | "success" | "error";
 type SelectedAttachment = {
@@ -59,8 +60,8 @@ export function NoticeComposer() {
           priority,
           criticality,
           link: link.trim() || null,
-          publishedDate: publishedDate || null,
-          expirationDate: expirationDate || null,
+          publishedDate: withLocalOffset(publishedDate),
+          expirationDate: withLocalOffset(expirationDate),
           active: true,
           closable,
           ...(attachment ? { imageBase64: attachment.base64, imageMimeType: attachment.mimeType } : {}),
@@ -200,8 +201,8 @@ export function NoticeComposer() {
             <div className="browser-bar"><i /><i /><i /><span>intranet.exemplo.gov.br</span></div>
             <div className="preview-background">
               <IntranetNoticeCard variant="preview" notice={{
-                title: title || "Título do seu aviso",
-                message: message || "A mensagem aparecerá aqui enquanto você preenche o formulário.",
+                title: title || (attachment ? "" : "Título do seu aviso"),
+                message: message || (attachment ? "" : "A mensagem aparecerá aqui enquanto você preenche o formulário."),
                 criticality,
                 priority,
                 link: link || undefined,

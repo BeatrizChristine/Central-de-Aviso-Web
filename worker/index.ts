@@ -2,8 +2,22 @@ import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 
+const securityHeaders = {
+  "Content-Security-Policy": "frame-ancestors 'self'",
+  "Referrer-Policy": "same-origin",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "SAMEORIGIN",
+};
+
+function withSecurityHeaders(response: Response) {
+  if (response.status === 101) return response;
+  const secured = new Response(response.body, response);
+  for (const [name, value] of Object.entries(securityHeaders)) secured.headers.set(name, value);
+  return secured;
+}
+
 const worker = {
-  fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
+  async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
     let binding = ctx.props?.CONNECTORS;
     // Local preview emulates the same request-scoped capability. This branch and
     // the auxiliary service binding are absent from production builds.
@@ -23,7 +37,7 @@ const worker = {
         },
       };
     }
-    return runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx));
+    return withSecurityHeaders(await runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx)));
   },
 };
 

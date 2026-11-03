@@ -22,7 +22,7 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
         <div className="intranet-popup-heading-main">
           <span className="intranet-popup-brand-icon"><BellRing size={15} /></span>
           <div>
-            <h2>{notice.title || "Título do seu aviso"}</h2>
+            <h2>{notice.title || "Aviso"}</h2>
             <div className="intranet-popup-meta">
               <span className="intranet-popup-badge">{noticeLevelLabel(notice.criticality, notice.priority)}</span>
               <span className="intranet-popup-active"><CircleCheck size={11} /> {notice.active === false ? "Inativo" : "Ativo"}</span>
@@ -36,7 +36,7 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
         <div className="intranet-popup-alert">
           <span className="intranet-popup-alert-icon">{alertIcon(theme)}</span>
           <div>
-            <p>{notice.message || "A mensagem aparecerá aqui enquanto você preenche o formulário."}</p>
+            {notice.message && <p>{notice.message}</p>}
             {notice.imageUrl && <NoticeAttachment notice={notice} showFileName={variant !== "preview"} />}
             {notice.link && <a className="intranet-popup-link" href={notice.link} target="_blank" rel="noreferrer">Saiba mais <ExternalLink size={12} /></a>}
           </div>

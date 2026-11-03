@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import type { AuthUser, UserRole } from "@/types/auth";
+import { createNoticeAuditTable, recordCreatedNotice, removeNoticeAudit } from "./notice-audit-sql.mjs";
 
 export type NoticeAuditAction = "created" | "deactivated" | "reactivated" | "deleted";
 
@@ -80,18 +81,7 @@ export async function recordNoticeAudit(
   let update: D1PreparedStatement;
 
   if (action === "created") {
-    update = database.prepare(`
-      INSERT INTO notice_audit (
-        notice_id, created_by_id, created_by_username, created_by_name, created_by_role, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(notice_id) DO UPDATE SET
-        created_by_id = COALESCE(notice_audit.created_by_id, excluded.created_by_id),
-        created_by_username = COALESCE(notice_audit.created_by_username, excluded.created_by_username),
-        created_by_name = COALESCE(notice_audit.created_by_name, excluded.created_by_name),
-        created_by_role = COALESCE(notice_audit.created_by_role, excluded.created_by_role),
-        created_at = COALESCE(notice_audit.created_at, excluded.created_at),
-        updated_at = excluded.updated_at
-    `).bind(noticeId, ...actor, occurredAt);
+    update = database.prepare(recordCreatedNotice).bind(noticeId, ...actor, occurredAt);
   } else if (action === "deactivated") {
     update = database.prepare(`
       INSERT INTO notice_audit (
@@ -119,10 +109,7 @@ export async function recordNoticeAudit(
         updated_at = excluded.updated_at
     `).bind(noticeId, ...actor, occurredAt);
   } else {
-    update = database.prepare(`
-      INSERT INTO notice_audit (notice_id, updated_at) VALUES (?, ?)
-      ON CONFLICT(notice_id) DO UPDATE SET updated_at = excluded.updated_at
-    `).bind(noticeId, occurredAt);
+    update = database.prepare(removeNoticeAudit).bind(noticeId);
   }
 
   const event = database.prepare(`
@@ -146,27 +133,7 @@ function ensureSchema(database: D1Database) {
 
 async function initializeSchema(database: D1Database) {
   await database.batch([
-      database.prepare(`
-        CREATE TABLE IF NOT EXISTS notice_audit (
-          notice_id TEXT PRIMARY KEY,
-          created_by_id TEXT,
-          created_by_username TEXT,
-          created_by_name TEXT,
-          created_by_role TEXT,
-          created_at TEXT,
-          deactivated_by_id TEXT,
-          deactivated_by_username TEXT,
-          deactivated_by_name TEXT,
-          deactivated_by_role TEXT,
-          deactivated_at TEXT,
-          reactivated_by_id TEXT,
-          reactivated_by_username TEXT,
-          reactivated_by_name TEXT,
-          reactivated_by_role TEXT,
-          reactivated_at TEXT,
-          updated_at TEXT NOT NULL
-        )
-      `),
+      database.prepare(createNoticeAuditTable),
       database.prepare(`
         CREATE TABLE IF NOT EXISTS notice_audit_event (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

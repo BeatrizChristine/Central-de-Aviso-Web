@@ -5,7 +5,7 @@ import { AuthConfigurationError } from "./errors";
 export const AUTH_COOKIE_NAME = "central_avisos_session";
 
 const DEFAULT_SESSION_SECONDS = 8 * 60 * 60;
-const REMEMBER_SESSION_SECONDS = 30 * 24 * 60 * 60;
+const REMEMBER_SESSION_SECONDS = 7 * 24 * 60 * 60;
 const encoder = new TextEncoder();
 
 type SessionPayload = AuthUser & { iat: number; exp: number };
@@ -49,7 +49,7 @@ export async function readSession(request: Request): Promise<AuthUser | null> {
       || typeof payload.username !== "string"
       || typeof payload.name !== "string"
       || (payload.email !== null && typeof payload.email !== "string")
-      || (payload.role !== undefined && !isUserRole(payload.role))
+      || !isUserRole(payload.role)
       || typeof payload.exp !== "number"
       || payload.exp <= Math.floor(Date.now() / 1000)
     ) {
@@ -60,7 +60,7 @@ export async function readSession(request: Request): Promise<AuthUser | null> {
       username: payload.username,
       name: payload.name,
       email: payload.email,
-      role: payload.role || "nti",
+      role: payload.role,
     };
   } catch {
     return null;

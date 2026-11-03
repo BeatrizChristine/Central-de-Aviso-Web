@@ -15,7 +15,7 @@
     "start": "node scripts/start-local.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit --pretty false",
-    "test": "node --experimental-strip-types --test tests/auth-account.test.mjs tests/netbios.test.mjs tests/network.test.mjs tests/notice.test.mjs",
+    "test": "node --experimental-strip-types --test tests/auth-account.test.mjs tests/netbios.test.mjs tests/network.test.mjs tests/notice.test.mjs tests/notice-audit-sql.test.mjs tests/notice-date.test.mjs",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
