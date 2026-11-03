@@ -1,6 +1,6 @@
 import { Client, Filter, InvalidCredentialsError, type Entry } from "ldapts";
 import type { AuthUser } from "@/types/auth";
-import { belongsToAllowedGroup, extractAccountName } from "./account.mjs";
+import { extractAccountName, roleForGroups } from "./account.mjs";
 import { activeDirectoryConfig } from "./config";
 import {
   ActiveDirectoryUnavailableError,
@@ -51,7 +51,8 @@ export async function authenticateWithActiveDirectory(
     }
 
     const entry = searchEntries[0];
-    if (!belongsToAllowedGroup(entryValues(entry, "memberOf"), config.allowedGroups)) {
+    const role = roleForGroups(entryValues(entry, "memberOf"), config.ntiGroups, config.gecomGroups);
+    if (!role) {
       throw new UnauthorizedGroupError("Seu usuário não possui acesso à Central de Avisos.");
     }
 
@@ -62,6 +63,7 @@ export async function authenticateWithActiveDirectory(
       username: login,
       name: entryValue(entry, "displayName") || login,
       email: entryValue(entry, "mail") || null,
+      role,
     };
   } catch (error) {
     if (

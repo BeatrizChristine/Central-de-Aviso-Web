@@ -1,6 +1,8 @@
 import { execFile } from "node:child_process";
+import { reverse } from "node:dns/promises";
 import http from "node:http";
 import { promisify } from "node:util";
+import { queryNetbiosName } from "../lib/netbios.mjs";
 
 const execFileAsync = promisify(execFile);
 const host = "127.0.0.1";
@@ -51,6 +53,23 @@ async function resolveHostname(ip) {
   const current = cache.get(ip);
   if (current && current.expiresAt > Date.now()) return current.hostname;
 
+  let hostname = await resolveReverseDns(ip);
+  if (!hostname && process.platform === "win32") hostname = await resolveWindowsName(ip);
+  if (!hostname) hostname = normalizeHostname(await queryNetbiosName(ip));
+  cache.set(ip, { hostname, expiresAt: Date.now() + (hostname ? positiveTtlMs : negativeTtlMs) });
+  return hostname;
+}
+
+async function resolveReverseDns(ip) {
+  try {
+    const names = await reverse(ip);
+    return normalizeHostname(names[0]);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveWindowsName(ip) {
   let output = "";
   try {
     const result = await execFileAsync("ping.exe", ["-a", "-n", "1", "-w", "250", ip], {
@@ -65,9 +84,15 @@ async function resolveHostname(ip) {
 
   const escapedIp = ip.replaceAll(".", "\\.");
   const match = output.match(new RegExp(`([A-Za-z0-9][A-Za-z0-9.-]{0,252})\\s+\\[${escapedIp}\\]`, "i"));
-  const hostname = match?.[1] && match[1] !== ip ? match[1].replace(/\.$/, "").split(".")[0] : null;
-  cache.set(ip, { hostname, expiresAt: Date.now() + (hostname ? positiveTtlMs : negativeTtlMs) });
-  return hostname;
+  return normalizeHostname(match?.[1]);
+}
+
+function normalizeHostname(value) {
+  if (typeof value !== "string") return null;
+  const hostname = value.trim().replace(/\.$/, "").split(".")[0];
+  return hostname && /^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$/.test(hostname)
+    ? hostname
+    : null;
 }
 
 function isPrivateIpv4(value) {

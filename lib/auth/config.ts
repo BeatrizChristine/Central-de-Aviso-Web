@@ -6,6 +6,8 @@ export type ActiveDirectoryConfig = {
   baseDn: string;
   userFilter: string;
   allowedGroups: string[];
+  ntiGroups: string[];
+  gecomGroups: string[];
   rejectUnauthorized: boolean;
 };
 
@@ -15,10 +17,11 @@ export function activeDirectoryConfig(): ActiveDirectoryConfig {
   const baseDn = process.env.CENTRAL_AD_BASE_DN?.trim() || "";
   const userFilter = process.env.CENTRAL_AD_USER_FILTER?.trim()
     || "(&(objectCategory=person)(objectClass=user)(sAMAccountName={0}))";
-  const allowedGroups = (process.env.CENTRAL_AD_ALLOWED_GROUPS || "")
-    .split(",")
-    .map((group) => group.trim())
-    .filter(Boolean);
+  const legacyAllowedGroups = groupList(process.env.CENTRAL_AD_ALLOWED_GROUPS);
+  const ntiGroups = groupList(process.env.CENTRAL_AD_NTI_GROUPS);
+  const gecomGroups = groupList(process.env.CENTRAL_AD_GECOM_GROUPS);
+  const effectiveNtiGroups = ntiGroups.length ? ntiGroups : legacyAllowedGroups;
+  const allowedGroups = [...new Set([...effectiveNtiGroups, ...gecomGroups])];
   const allowInsecureLdap = parseBoolean(process.env.CENTRAL_AD_ALLOW_INSECURE_LDAP);
   const rejectUnauthorized = process.env.CENTRAL_AD_TLS_REJECT_UNAUTHORIZED?.trim().toLowerCase() !== "false";
 
@@ -41,7 +44,20 @@ export function activeDirectoryConfig(): ActiveDirectoryConfig {
     );
   }
 
-  return { url, domain, baseDn, userFilter, allowedGroups, rejectUnauthorized };
+  return {
+    url,
+    domain,
+    baseDn,
+    userFilter,
+    allowedGroups,
+    ntiGroups: effectiveNtiGroups,
+    gecomGroups,
+    rejectUnauthorized,
+  };
+}
+
+function groupList(value: string | undefined) {
+  return (value || "").split(",").map((group) => group.trim()).filter(Boolean);
 }
 
 function parseBoolean(value: string | undefined) {

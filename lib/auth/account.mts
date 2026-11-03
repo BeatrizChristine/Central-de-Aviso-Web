@@ -9,6 +9,12 @@ export function belongsToAllowedGroup(userGroups: string[], allowedGroups: strin
   }));
 }
 
+export function roleForGroups(userGroups: string[], ntiGroups: string[], gecomGroups: string[]) {
+  if (belongsToAllowedGroup(userGroups, ntiGroups)) return "nti";
+  if (belongsToAllowedGroup(userGroups, gecomGroups)) return "gecom";
+  return null;
+}
+
 export function extractAccountName(username: string) {
   const withoutDomain = username.includes("\\")
     ? username.slice(username.lastIndexOf("\\") + 1)

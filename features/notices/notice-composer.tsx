@@ -5,6 +5,7 @@ import {
   ChevronRight,
   CircleCheck,
   Eye,
+  FilePlus2,
   Info,
   Send,
   UploadCloud,
@@ -27,10 +28,11 @@ type SelectedAttachment = {
 
 export function NoticeComposer() {
   const fileInput = useRef<HTMLInputElement>(null);
+  const submitLocked = useRef(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [criticality, setCriticality] = useState("informative");
-  const [priority, setPriority] = useState("normal");
+  const priority = priorityForCriticality(criticality);
   const [link, setLink] = useState("");
   const [publishedDate, setPublishedDate] = useState("");
   const [expirationDate, setExpirationDate] = useState("");
@@ -42,6 +44,8 @@ export function NoticeComposer() {
 
   async function publishNotice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitLocked.current) return;
+    submitLocked.current = true;
     setSubmitState("sending");
     setFeedback("");
 
@@ -64,9 +68,11 @@ export function NoticeComposer() {
       });
       const payload = await readJson(response);
       if (!response.ok) throw new Error(apiError(payload, "A API recusou o aviso."));
+      clearComposer();
       setSubmitState("success");
-      setFeedback("Aviso publicado com sucesso.");
+      setFeedback("Aviso publicado com sucesso. O formulário foi limpo para evitar um envio duplicado.");
     } catch (error) {
+      submitLocked.current = false;
       setSubmitState("error");
       setFeedback(error instanceof Error ? error.message : "Não foi possível publicar o aviso.");
     }
@@ -75,6 +81,7 @@ export function NoticeComposer() {
   async function selectAttachment(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
+    markFormChanged();
     setAttachmentError("");
     const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
     if (!allowed.includes(file.type)) {
@@ -103,9 +110,36 @@ export function NoticeComposer() {
   }
 
   function removeAttachment() {
+    markFormChanged();
     setAttachment(null);
     setAttachmentError("");
     if (fileInput.current) fileInput.current.value = "";
+  }
+
+  function clearComposer() {
+    setTitle("");
+    setMessage("");
+    setCriticality("informative");
+    setLink("");
+    setPublishedDate("");
+    setExpirationDate("");
+    setClosable(true);
+    setAttachment(null);
+    setAttachmentError("");
+    if (fileInput.current) fileInput.current.value = "";
+  }
+
+  function markFormChanged() {
+    if (submitState !== "success" && submitState !== "error") return;
+    submitLocked.current = false;
+    setSubmitState("idle");
+    setFeedback("");
+  }
+
+  function createAnotherNotice() {
+    submitLocked.current = false;
+    setSubmitState("idle");
+    setFeedback("");
   }
 
   return (
@@ -119,19 +153,18 @@ export function NoticeComposer() {
         <form className="form-card" onSubmit={publishNotice}>
           <section className="form-section">
             <div className="section-heading"><span className="section-icon"><Info size={19} /></span><span><strong>Conteúdo do aviso</strong><small>As informações que serão exibidas no popup.</small></span></div>
-            <label>Título do aviso <em>*</em>
-              <input required maxLength={120} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Ex.: Manutenção programada" />
+            <label>Título do aviso (opcional)
+              <input maxLength={120} value={title} onChange={(event) => { markFormChanged(); setTitle(event.target.value); }} placeholder="Ex.: Manutenção programada" />
               <small className="field-counter">{title.length}/120</small>
             </label>
-            <label>Mensagem <em>*</em>
-              <textarea required maxLength={1000} rows={6} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Escreva uma mensagem clara e objetiva para os colaboradores." />
+            <label>Descrição (opcional)
+              <textarea maxLength={1000} rows={6} value={message} onChange={(event) => { markFormChanged(); setMessage(event.target.value); }} placeholder="Escreva uma mensagem clara e objetiva para os colaboradores." />
               <small className="field-counter">{message.length}/1000</small>
             </label>
-            <div className="field-row">
-              <FilterSelect label="CRITICIDADE" value={criticality} onValueChange={setCriticality} options={[{ value: "informative", label: "Informativa" }, { value: "attention", label: "Moderada" }, { value: "critical", label: "Crítica" }]} />
-              <FilterSelect label="PRIORIDADE" value={priority} onValueChange={setPriority} options={[{ value: "low", label: "Baixa" }, { value: "normal", label: "Normal" }, { value: "high", label: "Alta" }]} />
+            <div className="field-row notice-level-row">
+              <FilterSelect label="NÍVEL DO AVISO" value={criticality} onValueChange={(value) => { markFormChanged(); setCriticality(value); }} options={[{ value: "informative", label: "Informativo" }, { value: "attention", label: "Atenção" }, { value: "critical", label: "Crítico" }]} />
             </div>
-            <label>Link complementar<input type="url" value={link} onChange={(event) => setLink(event.target.value)} placeholder="https://intranet.exemplo.gov.br/pagina" /></label>
+            <label>Link complementar<input type="url" value={link} onChange={(event) => { markFormChanged(); setLink(event.target.value); }} placeholder="https://intranet.exemplo.gov.br/pagina" /></label>
             <div className={`upload-box ${attachment ? "upload-box-selected" : ""}`}>
               <input ref={fileInput} className="upload-input" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={(event) => void selectAttachment(event)} />
               <span className="upload-icon"><UploadCloud size={22} /></span>
@@ -146,13 +179,19 @@ export function NoticeComposer() {
           <section className="form-section">
             <div className="section-heading"><span className="section-icon"><CalendarClock size={19} /></span><span><strong>Publicação</strong><small>Defina o período de exibição do aviso.</small></span></div>
             <div className="field-row">
-              <DateTimeField label="Publicar em" value={publishedDate} onChange={setPublishedDate} />
-              <DateTimeField label="Expirar em" value={expirationDate} min={publishedDate || undefined} onChange={setExpirationDate} />
+              <DateTimeField label="Publicar em" value={publishedDate} onChange={(value) => { markFormChanged(); setPublishedDate(value); }} />
+              <DateTimeField label="Expirar em" value={expirationDate} min={publishedDate || undefined} onChange={(value) => { markFormChanged(); setExpirationDate(value); }} />
             </div>
-            <label className="check-row"><input type="checkbox" checked={closable} onChange={(event) => setClosable(event.target.checked)} /><span><strong>Permitir fechar o aviso</strong><small>O colaborador poderá dispensar o popup.</small></span></label>
+            <label className="check-row"><input type="checkbox" checked={closable} onChange={(event) => { markFormChanged(); setClosable(event.target.checked); }} /><span><strong>Permitir fechar o aviso</strong><small>O colaborador poderá dispensar o popup.</small></span></label>
           </section>
           {feedback && <div className={`feedback feedback-${submitState}`} role="status">{submitState === "success" ? <CircleCheck size={18} /> : <Info size={18} />}{feedback}</div>}
-          <div className="form-actions"><button type="submit" className="primary-button" disabled={submitState === "sending"}><Send size={17} /> {submitState === "sending" ? "Publicando..." : "Publicar aviso"}</button></div>
+          <div className="form-actions">
+            {submitState === "success" && <button type="button" className="secondary-button" onClick={createAnotherNotice}><FilePlus2 size={17} /> Criar outro aviso</button>}
+            <button type="submit" className="primary-button" disabled={submitState === "sending" || submitState === "success"}>
+              {submitState === "success" ? <CircleCheck size={17} /> : <Send size={17} />}
+              {submitState === "sending" ? "Publicando..." : submitState === "success" ? "Publicado" : "Publicar aviso"}
+            </button>
+          </div>
         </form>
 
         <aside className="preview-panel">
@@ -181,6 +220,10 @@ export function NoticeComposer() {
       </div>
     </div>
   );
+}
+
+function priorityForCriticality(criticality: string) {
+  return criticality === "informative" ? "normal" : "high";
 }
 
 function readFileAsDataUrl(file: File) {

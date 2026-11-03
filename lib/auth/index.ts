@@ -11,7 +11,8 @@ export {
   AUTH_COOKIE_NAME,
   createSessionToken,
   readSession,
+  requireApiRole,
   requireApiSession,
   sessionCookieOptions,
 } from "./session";
-export type { AuthUser } from "@/types/auth";
+export type { AuthUser, UserRole } from "@/types/auth";

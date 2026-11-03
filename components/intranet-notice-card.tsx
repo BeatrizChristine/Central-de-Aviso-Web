@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, BellRing, CalendarClock, CircleAlert, CircleCheck, ExternalLink, FileText, Info, X } from "lucide-react";
+import { Activity, AlertTriangle, BellRing, CalendarClock, CircleAlert, CircleCheck, ExternalLink, FileText, Info, UserRound, X } from "lucide-react";
 import { ReactNode, useMemo, useState } from "react";
 import type { NoticeRecord } from "@/types/notice";
 
@@ -24,7 +24,7 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
           <div>
             <h2>{notice.title || "Título do seu aviso"}</h2>
             <div className="intranet-popup-meta">
-              <span className="intranet-popup-badge">{criticalityLabel(notice.criticality)} - {priorityLabel(notice.priority)}</span>
+              <span className="intranet-popup-badge">{noticeLevelLabel(notice.criticality, notice.priority)}</span>
               <span className="intranet-popup-active"><CircleCheck size={11} /> {notice.active === false ? "Inativo" : "Ativo"}</span>
               {notice.id && <span className="intranet-popup-id">#{notice.id}</span>}
             </div>
@@ -47,6 +47,7 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
             {notice.expirationDate && <DateInfo label="Expira" value={notice.expirationDate} />}
           </div>
         )}
+        {variant === "list" && <NoticeAuditTrail notice={notice} />}
         {(actions || (variant === "preview" && notice.closable !== false)) && (
           <div className={`intranet-popup-footer ${actions ? "intranet-popup-actions" : ""}`}>
             {actions || <button type="button">Fechar</button>}
@@ -54,6 +55,62 @@ export function IntranetNoticeCard({ notice, variant = "list", actions }: Intran
         )}
       </div>
     </article>
+  );
+}
+
+function NoticeAuditTrail({ notice }: { notice: IntranetNoticeData }) {
+  const audit = notice.audit;
+  const createdAt = audit?.createdAt || notice.publishedDate;
+  const lastChange = notice.active === false && audit?.deactivatedAt
+    ? { label: "Desativado por", actor: audit.deactivatedBy, date: audit.deactivatedAt }
+    : notice.active !== false && audit?.reactivatedAt
+      ? { label: "Reativado por", actor: audit.reactivatedBy, date: audit.reactivatedAt }
+      : null;
+
+  return (
+    <div className="intranet-popup-audit" aria-label="Auditoria do popup">
+      <AuditInfo
+        icon={<UserRound size={14} />}
+        label="Publicado por"
+        actor={audit?.createdBy?.name || "Não informado"}
+        username={audit?.createdBy?.username}
+        date={createdAt}
+      />
+      {lastChange && (
+        <AuditInfo
+          icon={<Activity size={14} />}
+          label={lastChange.label}
+          actor={lastChange.actor?.name || "Não informado"}
+          username={lastChange.actor?.username}
+          date={lastChange.date}
+        />
+      )}
+    </div>
+  );
+}
+
+function AuditInfo({
+  icon,
+  label,
+  actor,
+  username,
+  date,
+}: {
+  icon: ReactNode;
+  label: string;
+  actor: string;
+  username?: string;
+  date?: string;
+}) {
+  return (
+    <div className="intranet-popup-audit-item">
+      <span>{icon}</span>
+      <div>
+        <small>{label}</small>
+        <strong>{actor}{username ? ` (${username})` : ""}</strong>
+        {date && <time dateTime={date}>{formatDate(date)}</time>}
+      </div>
+    </div>
   );
 }
 
@@ -95,20 +152,12 @@ function noticeTheme(value: string) {
   return "informative";
 }
 
-function criticalityLabel(value: string) {
-  const theme = noticeTheme(value);
-  if (theme === "critical") return "Crítica";
-  if (theme === "attention") return "Moderada";
-  if (theme === "success") return "Baixa";
-  return "Informativa";
-}
-
-function priorityLabel(value: string) {
-  const normalized = value.toLowerCase();
-  if (normalized.includes("urgent") || normalized === "urgente" || normalized.includes("immediate")) return "Urgente";
-  if (normalized.includes("important") || normalized === "importante" || normalized === "high" || normalized === "alta") return "Alta";
-  if (normalized === "low" || normalized === "baixa") return "Baixa";
-  return "Normal";
+function noticeLevelLabel(criticality: string, priority: string) {
+  const theme = noticeTheme(criticality);
+  const normalizedPriority = priority.toLowerCase();
+  if (theme === "critical" || normalizedPriority.includes("urgent") || normalizedPriority.includes("immediate")) return "Crítico";
+  if (theme === "attention" || normalizedPriority.includes("important") || normalizedPriority === "high" || normalizedPriority === "alta") return "Atenção";
+  return "Informativo";
 }
 
 function alertIcon(theme: string) {

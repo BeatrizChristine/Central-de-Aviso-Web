@@ -81,11 +81,18 @@ export default function Home() {
     setMenuOpen(false);
   }
 
+  function completeLogin(user: AuthUser) {
+    setAuthenticatedUser(user);
+    setActivePage("Novo aviso");
+    setMenuOpen(false);
+  }
+
   async function logout() {
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     } finally {
       setAuthenticatedUser(null);
+      setActivePage("Novo aviso");
       setMenuOpen(false);
     }
   }
@@ -93,7 +100,7 @@ export default function Home() {
   if (!authChecked) {
     return <main className="auth-loading" aria-busy="true"><BellRing size={30} /><span>Verificando sessão…</span></main>;
   }
-  if (!authenticatedUser) return <LoginView onLogin={setAuthenticatedUser} />;
+  if (!authenticatedUser) return <LoginView onLogin={completeLogin} />;
 
   return (
     <main className="app-shell">
@@ -107,7 +114,7 @@ export default function Home() {
           <span className="brand-mark"><BellRing size={22} /></span>
           <span><strong>Central de Avisos</strong><small>Comunicação interna</small></span>
         </div>
-        {(["Comunicação", "Administração"] as const).map((group) => (
+        {(["Comunicação", ...(authenticatedUser.role === "nti" ? ["Administração" as const] : [])] as const).map((group) => (
           <nav key={group} aria-label={group}>
             <p className="nav-heading">{group}</p>
             {navigation.filter((item) => item.group === group).map((item) => {
@@ -124,7 +131,7 @@ export default function Home() {
         <div className="sidebar-footer">
           <div className="signed-user" title={authenticatedUser.email || authenticatedUser.username}>
             <span>{authenticatedUser.name.slice(0, 1).toLocaleUpperCase("pt-BR")}</span>
-            <div><strong>{authenticatedUser.name}</strong><small>{authenticatedUser.username}</small></div>
+            <div><strong>{authenticatedUser.name}</strong><small>{authenticatedUser.username} · {authenticatedUser.role.toLocaleUpperCase("pt-BR")}</small></div>
           </div>
           <button type="button" className="nav-item" onClick={() => void logout()}><LogOut size={18} /><span>Sair</span></button>
           <div className={`server-status status-${apiState}`}><span className="status-dot" /><span>{apiLabel}</span></div>
@@ -135,9 +142,9 @@ export default function Home() {
         {activePage === "Novo aviso" ? (
           <NoticeComposer />
         ) : activePage === "Popups" ? (
-          <PopupsView onCreateNotice={() => selectPage("Novo aviso")} />
+          <PopupsView currentUser={authenticatedUser} onCreateNotice={() => selectPage("Novo aviso")} />
         ) : activePage === "Histórico" ? (
-          <HistoryView />
+          <HistoryView currentUser={authenticatedUser} />
         ) : activePage === "Acessando agora" ? (
           <MonitorView />
         ) : activePage === "Mensagem do dia" ? (

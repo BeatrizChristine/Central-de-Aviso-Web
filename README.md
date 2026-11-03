@@ -2,6 +2,8 @@
 
 Painel interno para publicar avisos, gerenciar popups e mensagens da Intranet e acompanhar os dispositivos conectados. A aplicação usa React, TypeScript, Vinext e autenticação no Active Directory.
 
+A autoria dos popups e as ações de desativação/reativação são registradas em uma base D1 local persistente. A identidade sempre é obtida da sessão autenticada, e o histórico continua compartilhado entre todos os usuários autorizados.
+
 ## Requisitos
 
 - Node.js 22.13 ou superior.
@@ -20,11 +22,15 @@ CENTRAL_AD_URL=ldaps://dc01.exemplo.local:636
 CENTRAL_AD_DOMAIN=exemplo.local
 CENTRAL_AD_BASE_DN=DC=exemplo,DC=local
 CENTRAL_AD_ALLOWED_GROUPS=CENTRAL_AVISOS_ADMIN,CENTRAL_AVISOS_OPERADOR
+CENTRAL_AD_NTI_GROUPS=CENTRAL_AVISOS_ADMIN,CENTRAL_AVISOS_OPERADOR
+CENTRAL_AD_GECOM_GROUPS=GECOM
 CENTRAL_AD_ALLOW_INSECURE_LDAP=false
 CENTRAL_AUTH_SECRET=gere-um-segredo-aleatorio-com-pelo-menos-32-caracteres
 ```
 
 Não coloque endereços internos, domínio real, grupos, tokens ou senhas no `.env.example`. O `.env.local` é ignorado pelo Git.
+
+Os grupos listados em `CENTRAL_AD_NTI_GROUPS` recebem acesso administrativo completo. Os grupos de `CENTRAL_AD_GECOM_GROUPS` acessam somente Novo aviso, Popups e Histórico. Usuários do NTI têm precedência caso pertençam aos dois perfis.
 
 Para produção, use LDAPS com certificado válido e mantenha `CENTRAL_AD_ALLOW_INSECURE_LDAP=false`.
 
@@ -48,6 +54,33 @@ O comando `dev` também inicia em `127.0.0.1:5190` o resolvedor local de nomes d
 ```powershell
 npm.cmd run dev:interface -- --port 5174
 ```
+
+Depois de gerar o build, `npm start` inicia o Worker local e carrega os segredos
+do `.env.local` como bindings do runtime:
+
+```powershell
+npm.cmd run build
+npm.cmd start
+```
+
+O script `scripts/start-local.mjs` entrega ao Wrangler o caminho absoluto do
+`.env.local`. Não inicie o artefato chamando o arquivo `wrangler.js` diretamente:
+nesse formato o próprio Node pode consumir `--env-file`, e as variáveis não ficam
+disponíveis para as rotas do Worker.
+
+No servidor `avisos.idam.am.gov.br`, a aplicação é administrada pelo PM2. Faça a
+atualização como o usuário `intranet` e não execute `npm start` manualmente como
+`root`:
+
+```bash
+cd /opt/central-avisos/Central-de-Aviso-Web
+npm run build
+pm2 restart central-avisos
+```
+
+Cada execução usa uma cópia imutável do build em `.wrangler/builds/<BUILD_ID>`.
+Assim, compilar a próxima versão não remove os CSS e JavaScript da versão que
+continua atendendo na porta 3001.
 
 ## Verificações
 

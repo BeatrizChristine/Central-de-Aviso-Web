@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { isPrivateIpv4 } from "@/lib/network.mjs";
 import { createIntranetHeaders, getIntranetBaseUrl } from "@/lib/server/intranet";
 
 export async function GET(request: Request) {
-  const unauthorized = await requireApiSession(request);
+  const unauthorized = await requireApiRole(request, ["nti"]);
   if (unauthorized) return unauthorized;
 
   const baseUrl = getIntranetBaseUrl();
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   }
 }
 export async function POST(request: Request) {
-  const unauthorized = await requireApiSession(request);
+  const unauthorized = await requireApiRole(request, ["nti"]);
   if (unauthorized) return unauthorized;
 
   try {

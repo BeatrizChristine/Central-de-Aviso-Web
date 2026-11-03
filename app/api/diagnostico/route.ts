@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { requireApiRole } from "@/lib/auth";
 import { createIntranetHeaders, getIntranetBaseUrl } from "@/lib/server/intranet";
 
 const paths = [
@@ -9,7 +9,7 @@ const paths = [
 ] as const;
 
 export async function GET(request: Request) {
-  const unauthorized = await requireApiSession(request);
+  const unauthorized = await requireApiRole(request, ["nti"]);
   if (unauthorized) return unauthorized;
 
   const baseUrl = getIntranetBaseUrl();

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { AuthUser } from "@/types/auth";
+import type { AuthUser, UserRole } from "@/types/auth";
 import { AuthConfigurationError } from "./errors";
 
 export const AUTH_COOKIE_NAME = "central_avisos_session";
@@ -49,6 +49,7 @@ export async function readSession(request: Request): Promise<AuthUser | null> {
       || typeof payload.username !== "string"
       || typeof payload.name !== "string"
       || (payload.email !== null && typeof payload.email !== "string")
+      || (payload.role !== undefined && !isUserRole(payload.role))
       || typeof payload.exp !== "number"
       || payload.exp <= Math.floor(Date.now() / 1000)
     ) {
@@ -59,6 +60,7 @@ export async function readSession(request: Request): Promise<AuthUser | null> {
       username: payload.username,
       name: payload.name,
       email: payload.email,
+      role: payload.role || "nti",
     };
   } catch {
     return null;
@@ -75,6 +77,32 @@ export async function requireApiSession(request: Request): Promise<NextResponse 
     { error: "Sessão expirada ou inexistente." },
     { status: 401, headers: { "Cache-Control": "no-store" } },
   );
+}
+
+export async function requireApiRole(
+  request: Request,
+  allowedRoles: readonly UserRole[],
+): Promise<NextResponse | null> {
+  try {
+    const user = await readSession(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Sessão expirada ou inexistente." },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    if (allowedRoles.includes(user.role)) return null;
+    return NextResponse.json(
+      { error: "Seu perfil não possui permissão para acessar este recurso." },
+      { status: 403, headers: { "Cache-Control": "no-store" } },
+    );
+  } catch (error) {
+    console.error("Falha ao validar a autorização:", error instanceof Error ? error.name : "UnknownError");
+    return NextResponse.json(
+      { error: "Sessão expirada ou inexistente." },
+      { status: 401, headers: { "Cache-Control": "no-store" } },
+    );
+  }
 }
 
 export function sessionCookieOptions(maxAge: number | undefined) {
@@ -133,4 +161,8 @@ function base64UrlDecode(value: string, asText?: boolean): string | Uint8Array {
   const binary = atob(padded);
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
   return asText ? new TextDecoder().decode(bytes) : bytes;
+}
+
+function isUserRole(value: unknown): value is UserRole {
+  return value === "nti" || value === "gecom";
 }
