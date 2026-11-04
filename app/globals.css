@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root { --blue: #14786C; --navy: #20343A; --line: #D7E1DE; --background: #EDF1F0; }
 * { box-sizing: border-box; }
@@ -241,9 +242,9 @@ input:focus, textarea:focus, select:focus { background: #fff; border-color: var(
 .intranet-popup-alert > div { min-width: 0; }
 .intranet-popup-alert p { color: #20343A; font-size: 12px; line-height: 1.55; margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
 .intranet-popup-link { display: inline-flex; align-items: center; gap: 4px; color: #14786C; font-size: 11px; font-weight: 650; margin-top: 8px; }
-.notice-attachment-preview { overflow: hidden; border: 1px solid #D7E1DE; border-radius: 8px; background: #fff; margin: 10px 0 0; }
-.notice-attachment-preview img { display: block; width: 100%; max-height: 320px; object-fit: contain; background: #F7FAF9; }
-.notice-attachment-preview figcaption { overflow: hidden; color: #526970; background: #FBFCFB; border-top: 1px solid #D7E1DE; padding: 6px 9px; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.notice-attachment-preview { display: flex; max-width: 100%; flex-direction: column; align-items: center; margin: 10px auto 0; }
+.notice-attachment-preview img { display: block; width: auto; max-width: 100%; height: auto; max-height: min(38vh, 360px); object-fit: contain; border: 1px solid #D7E1DE; border-radius: 8px; background: #F7FAF9; }
+.notice-attachment-preview figcaption { max-width: 100%; overflow: hidden; color: #526970; background: #FBFCFB; border-radius: 6px; margin-top: 4px; padding: 5px 8px; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .notice-attachment-error { display: flex; align-items: center; gap: 6px; color: #A94455; background: #fff; border: 1px solid #E5BCC5; border-radius: 7px; margin-top: 9px; padding: 8px; font-size: 11px; }
 .notice-file-link { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; color: #0D675D; background: #fff; border: 1px solid #D7E1DE; border-radius: 8px; margin-top: 9px; padding: 9px; text-decoration: none; }
 .notice-file-link strong, .notice-file-link small { display: block; }
